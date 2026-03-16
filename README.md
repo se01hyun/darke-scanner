@@ -83,7 +83,7 @@ Text Collector    ─┘     Network Sniffer          배지 (탐지 건수)
 ## 설치 (개발 빌드)
 
 ```bash
-git clone https://github.com/your-username/dark-scanner.git
+git clone https://github.com/se01hyun/darke-scanner.git
 cd dark-scanner
 npm install
 npm run build:prod
