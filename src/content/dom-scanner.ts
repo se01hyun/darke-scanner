@@ -1,10 +1,11 @@
 // Phase 1 MVP — DOM Scanner
 // 공정위 기준 17(시간제한 알림), 18(낮은 재고 알림), 3·10(몰래 장바구니 추가 / 특정옵션의 사전선택) 구현
-// Phase 5 — 기준 9(잘못된 계층구조 / 취소 버튼 시각적 약화) 추가
+// Phase 5 — 기준 9(잘못된 계층구조 / 취소 버튼 시각적 약화) 추가, QA 로깅 추가
 
 import type { DarkPatternDetection } from '../types';
 import { generateId } from '../utils/id';
 import { getElementInfo, getContrastRatio } from '../utils/element';
+import { logger } from '../utils/debug-logger';
 import domSelectors from '../../rules/dom-selectors.json';
 import fomoKeywords from '../../rules/fomo-keywords.json';
 
@@ -38,12 +39,23 @@ export class DOMScanner {
   }
 
   private scan(): void {
+    const t0 = performance.now();
+    logger.group(`DOM Scan — ${document.location.href}`);
+
+    const countdown       = this.detectCountdown();
+    const stockWarning    = this.detectStockWarning();
+    const preselected     = this.detectPreselectedOptions();
+    const weakenedCancel  = this.detectVisuallyWeakenedCancel();
+
     const detections: DarkPatternDetection[] = [
-      ...this.detectCountdown(),
-      ...this.detectStockWarning(),
-      ...this.detectPreselectedOptions(),
-      ...this.detectVisuallyWeakenedCancel(),
+      ...countdown, ...stockWarning, ...preselected, ...weakenedCancel,
     ];
+
+    logger.log('DOM', `스캔 완료 ${(performance.now() - t0).toFixed(1)}ms | 총 ${detections.length}건`
+      + ` (카운트다운:${countdown.length} 재고:${stockWarning.length} 사전선택:${preselected.length} 약화취소:${weakenedCancel.length})`);
+    logger.detections('DOM', detections);
+    logger.groupEnd();
+
     this.sendToBackground(detections);
   }
 
@@ -59,6 +71,9 @@ export class DOMScanner {
 
         const text = (el.textContent ?? '').trim();
         const hasTimePattern = COUNTDOWN_TEXT_RE.test(text);
+
+        logger.log('DOM:카운트다운',
+          `selector="${selector}" hasTime=${hasTimePattern} text="${text.slice(0, 80)}"`);
 
         detections.push({
           id: generateId(),
@@ -97,6 +112,16 @@ export class DOMScanner {
         if (!text) return;
 
         const matched = fomoKeywords.keywords.find((kw) => text.includes(kw));
+        const hasQuantityDigit = /\d/.test(text);
+
+        // 오탐 방지: FOMO 키워드도 없고 수량 숫자도 없으면 스킵
+        // (예: class="stock-photo", class="stock-list" 등 무관한 요소 제외)
+        if (!matched && !hasQuantityDigit) {
+          logger.warn('DOM:재고', `오탐 후보 스킵 — selector="${selector}" text="${text.slice(0, 60)}"`);
+          return;
+        }
+
+        logger.log('DOM:재고', `탐지 — selector="${selector}" keyword="${matched ?? '(없음)'}" text="${text.slice(0, 80)}"`);
 
         detections.push({
           id: generateId(),
@@ -167,12 +192,15 @@ export class DOMScanner {
         const labelLower = label?.toLowerCase() ?? '';
 
         // 레이블에 상업적 추가 항목을 암시하는 단어가 있으면 더 심각한 유형으로 분류
+        // '선택'은 제외 — "배송지 선택", "사이즈 선택" 등 정상 레이블과 혼동되어 오탐 발생
         const isSneaking =
           labelLower.includes('추가') ||
           labelLower.includes('보험') ||
           labelLower.includes('구독') ||
-          labelLower.includes('동의') ||
-          labelLower.includes('선택');
+          labelLower.includes('동의');
+
+        logger.log('DOM:사전선택',
+          `isSneaking=${isSneaking} label="${label ?? '(없음)'}" type=${el.type} id=${el.id}`);
 
         detections.push({
           id: generateId(),
@@ -243,6 +271,11 @@ export class DOMScanner {
       }
 
       if (signals.length === 0) continue;
+
+      logger.log('DOM:취소버튼약화',
+        `cancel="${(cancelBtn.textContent ?? '').trim().slice(0, 30)}" `
+        + `accept="${(acceptBtn.textContent ?? '').trim().slice(0, 30)}" `
+        + `신호: ${signals.join(' | ')}`);
 
       detections.push({
         id: generateId(),
@@ -321,12 +354,24 @@ export class DOMScanner {
   // ─── 인프라 ──────────────────────────────────────────────────────────────────
 
   private watchDynamicChanges(): void {
-    this.observer = new MutationObserver(() => {
+    this.observer = new MutationObserver((mutations) => {
       // 연속 DOM 변경을 debounce하여 과도한 재스캔 방지
       if (this.debounceTimer) clearTimeout(this.debounceTimer);
+
+      const reason = mutations.some((m) => m.type === 'attributes')
+        ? 'attribute 변경'
+        : '자식 노드 추가/삭제';
+      logger.log('MutationObserver', `재스캔 예약 (${reason})`);
+
       this.debounceTimer = setTimeout(() => this.scan(), 500);
     });
-    this.observer.observe(document.body, { childList: true, subtree: true });
+    this.observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      // checked 속성 변경(상품 옵션 선택 시)을 감지하기 위해 attribute 감시 추가
+      attributes: true,
+      attributeFilter: ['checked'],
+    });
   }
 
   private watchSPANavigation(): void {

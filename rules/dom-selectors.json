@@ -1,22 +1,37 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "changelog": "v1.1.0 — Phase 5 QA: 오탐 감소를 위해 너무 넓은 선택자 제거 및 :not() 제외 조건 추가",
   "selectors": {
     "countdown": [
       "[data-countdown]",
       "[class*='countdown']",
-      "[class*='timer']",
+      "[class*='timer']:not([class*='delivery']):not([class*='estimate']):not([class*='arrival']):not([class*='cook'])",
       "[id*='countdown']",
-      "[id*='timer']"
+      "[id*='timer']:not([id*='delivery']):not([id*='estimate'])"
     ],
     "stock_warning": [
-      "[class*='stock']",
-      "[class*='remain']",
       "[class*='soldout']",
-      "[class*='limited']"
+      "[class*='stock-warn']",
+      "[class*='stock-remain']",
+      "[class*='remainStock']",
+      "[class*='remain-stock']",
+      "[class*='limited-stock']",
+      "[class*='limited-qty']",
+      "[class*='limited-quantity']",
+      "[data-stock]",
+      "[data-remain]"
     ],
     "preselected_options": [
       "input[type='checkbox'][checked]",
       "input[type='radio'][checked]"
     ]
+  },
+  "removed_in_v1.1.0": {
+    "stock_warning_removed": [
+      "[class*='stock']",
+      "[class*='remain']",
+      "[class*='limited']"
+    ],
+    "reason": "너무 광범위하여 재고 이미지(stock-photo), 글자수 카운터(remain-chars), 접근 제한 문구(limited-access) 등을 잡는 오탐 발생. 더 구체적인 선택자로 대체하고 detectStockWarning()의 텍스트 키워드 워커가 보완함"
   }
 }

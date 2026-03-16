@@ -11,6 +11,7 @@ import { calcPressureScore } from './pressure-scorer';
 import { analyzeReviews } from './review-analyzer';
 import type { DarkPatternDetection, NLPTextsPayload } from '../types';
 import { generateId } from '../utils/id';
+import { logger } from '../utils/debug-logger';
 
 // Confirmshaming 정규식 패턴 (거절 버튼 문구에서 탐지)
 const CONFIRMSHAMING_PATTERNS: RegExp[] = [
@@ -67,20 +68,27 @@ export class NLPAnalyzer {
   async analyze(payload: NLPTextsPayload): Promise<DarkPatternDetection[]> {
     if (!this.initialized) await this.init();
 
+    logger.group(`NLP 분석 — 모델=${this.modelReady ? 'ONNX' : 'keyword-only'}`);
     const detections: DarkPatternDetection[] = [];
 
     // ── Pass 1: Confirmshaming (CTA 텍스트) ─────────────────────────────
+    logger.log('NLP:Pass1', `CTA 텍스트 ${payload.ctaTexts.length}건 Confirmshaming 검사`);
     const confirmshamingDetection = this.detectConfirmshaming(payload.ctaTexts);
-    if (confirmshamingDetection) detections.push(confirmshamingDetection);
+    if (confirmshamingDetection) {
+      logger.log('NLP:Pass1', `Confirmshaming 탐지 — "${confirmshamingDetection.evidence.raw.slice(0, 60)}"`);
+      detections.push(confirmshamingDetection);
+    }
 
     // ── Pass 1: 키워드 사전 매칭 ─────────────────────────────────────────
     const allPageText = [...payload.pageTexts, ...payload.ctaTexts].join(' ');
     const fomoHits = this.matcher.match(allPageText);
+    logger.log('NLP:Pass1', `FOMO 키워드 히트 ${fomoHits.length}건: ${fomoHits.join(', ') || '없음'}`);
 
     // 키워드 히트가 없으면 Pass 2 생략 (성능 최적화)
     if (fomoHits.length > 0) {
       // ── Pass 2: 심리적 압박 지수 계산 ───────────────────────────────────
       const pressureScore = calcPressureScore(allPageText, fomoHits);
+      logger.log('NLP:Pass2', `압박 지수 ${pressureScore}점 (suspicious≥${PRESSURE_SCORE_SUSPICIOUS} confirmed≥${PRESSURE_SCORE_CONFIRMED})`);
 
       if (pressureScore >= PRESSURE_SCORE_SUSPICIOUS) {
         detections.push({
@@ -100,10 +108,15 @@ export class NLPAnalyzer {
       }
     }
 
+    logger.groupEnd();
+
     // ── Pass 2: 가짜 리뷰 탐지 ──────────────────────────────────────────
+    logger.log('NLP:리뷰', `${payload.reviewTexts.length}건 리뷰 유사도 분석`);
     if (payload.reviewTexts.length >= 2) {
       const clusters = analyzeReviews(payload.reviewTexts);
+      logger.log('NLP:리뷰', `유사 클러스터 ${clusters.length}개 발견`);
       for (const cluster of clusters) {
+        logger.log('NLP:리뷰', `클러스터 ${cluster.reviews.length}건, 평균 유사도 ${(cluster.avgSimilarity * 100).toFixed(1)}%`);
         detections.push({
           id: generateId(),
           guideline: 5,

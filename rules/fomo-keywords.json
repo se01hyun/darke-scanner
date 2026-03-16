@@ -1,9 +1,16 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "changelog": "v1.1.0 — Phase 5 QA: 단독 'Limited' 제거(오탐), 구체적인 영문 패턴과 추가 한국어 패턴 보완",
   "keywords": [
     "마감 임박", "품절 임박", "한정 수량", "지금만", "오늘만",
     "마지막 기회", "곧 종료", "남은 수량", "재고 부족",
     "지금 보고 있는", "명이 보고 있습니다", "방금 구매",
-    "특가 마감", "타임세일", "Flash Sale", "Limited"
-  ]
+    "특가 마감", "타임세일",
+    "Flash Sale", "Limited Time", "Limited Stock", "Limited Edition",
+    "Selling Fast", "Only Left", "Last Chance"
+  ],
+  "removed_in_v1.1.0": {
+    "keywords": ["Limited"],
+    "reason": "'Limited' 단독 사용 시 'limited access', 'limited functionality' 등 정상 문맥도 탐지하여 오탐 발생. 'Limited Time', 'Limited Stock', 'Limited Edition' 등 구체적 조합으로 대체"
+  }
 }

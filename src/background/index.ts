@@ -1,7 +1,8 @@
 import { NetworkSniffer } from './network-sniffer';
 import { RuleEngine } from './rule-engine';
 import { NLPAnalyzer } from '../nlp/nlp-analyzer';
-import type { MessageType, DetectionResult } from '../types';
+import type { MessageType, DetectionResult, DarkPatternDetection } from '../types';
+import { logger } from '../utils/debug-logger';
 
 const ruleEngine = new RuleEngine();
 const sniffer = new NetworkSniffer();
@@ -19,6 +20,7 @@ function updateBadge(tabId: number, count: number): void {
   if (count > 0) {
     chrome.action.setBadgeBackgroundColor({ color: '#ef4444', tabId });
   }
+  logger.log('Badge', `tabId=${tabId} count=${count}`);
 }
 
 chrome.runtime.onMessage.addListener(
@@ -27,19 +29,44 @@ chrome.runtime.onMessage.addListener(
     const tabUrl = sender.tab?.url ?? '';
 
     if (message.type === 'DOM_DETECTIONS') {
-      const networkDetection = tabId !== undefined
-        ? sniffer.flagUnconfirmedDOMDetection(tabId)
-        : null;
+      logger.log('BG', `DOM_DETECTIONS 수신 — tabId=${tabId} url=${tabUrl} 건수=${message.payload.length}`);
 
-      const allDetections = networkDetection
-        ? [...message.payload, networkDetection]
-        : message.payload;
+      // ── 무한 스크롤 / 재스캔 시 NLP 탐지 결과 보존 ────────────────────────
+      // DOM 재스캔 때마다 기존 세션을 완전히 덮어쓰면 NLP 결과가 소실된다.
+      // 동일 URL에서 온 재스캔이면 기존 NLP 탐지만 꺼내 병합한다.
+      // URL이 달라지면(SPA 네비게이션) NLP 포함 전체를 초기화한다.
+      (async () => {
+        let existingNlpDetections: DarkPatternDetection[] = [];
+        if (tabId !== undefined) {
+          const stored = await chrome.storage.session.get(`result:${tabId}`);
+          const existing = stored[`result:${tabId}`] as DetectionResult | undefined;
+          if (existing?.pageUrl === tabUrl) {
+            existingNlpDetections = existing.detections.filter((d) => d.module === 'nlp');
+            if (existingNlpDetections.length > 0) {
+              logger.log('BG', `기존 NLP 탐지 ${existingNlpDetections.length}건 보존 (동일 URL 재스캔)`);
+            }
+          } else if (existing) {
+            logger.log('BG', `URL 변경 감지 — 이전 결과 초기화 (${existing.pageUrl} → ${tabUrl})`);
+          }
+        }
 
-      ruleEngine.evaluate(allDetections, tabUrl).then((result) => {
+        const networkDetection = tabId !== undefined
+          ? sniffer.flagUnconfirmedDOMDetection(tabId)
+          : null;
+
+        const allDetections: DarkPatternDetection[] = [
+          ...(networkDetection ? [...message.payload, networkDetection] : message.payload),
+          ...existingNlpDetections,
+        ];
+
+        return ruleEngine.evaluate(allDetections, tabUrl);
+      })().then((result) => {
         // 팝업 응답
         sendResponse(result);
 
         if (tabId === undefined) return;
+
+        logger.log('BG', `최종 결과 저장 — ${result.detections.length}건 (risk=${result.overallRiskScore})`);
 
         // 결과를 탭 세션에 저장 (팝업의 GET_RESULT 조회용)
         chrome.storage.session.set({ [`result:${tabId}`]: result });
@@ -78,7 +105,9 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === 'NLP_TEXTS' && tabId !== undefined) {
+      logger.log('BG', `NLP_TEXTS 수신 — tabId=${tabId} pageTexts=${message.payload.pageTexts.length} reviews=${message.payload.reviewTexts.length} cta=${message.payload.ctaTexts.length}`);
       nlpAnalyzer.analyze(message.payload).then(async (nlpDetections) => {
+        logger.log('BG', `NLP 분석 완료 — ${nlpDetections.length}건 탐지`);
         if (nlpDetections.length === 0) { sendResponse(null); return; }
 
         // 기존 세션 결과와 병합
