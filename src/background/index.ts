@@ -50,6 +50,19 @@ chrome.runtime.onMessage.addListener(
       return true;
     }
 
+    if (message.type === 'GET_RESULT') {
+      // 팝업·오버레이 등 tab 컨텍스트가 없는 발신자를 위해
+      // 현재 활성 탭의 세션 결과를 조회해 응답한다.
+      chrome.tabs.query({ active: true, currentWindow: true }).then(async (tabs) => {
+        const activeTabId = tabs[0]?.id;
+        if (activeTabId === undefined) { sendResponse(null); return; }
+        const stored = await chrome.storage.session.get(`result:${activeTabId}`);
+        const result = (stored[`result:${activeTabId}`] as DetectionResult | undefined) ?? null;
+        sendResponse(result);
+      });
+      return true;
+    }
+
     if (message.type === 'NLP_TEXTS' && tabId !== undefined) {
       nlpAnalyzer.analyze(message.payload).then(async (nlpDetections) => {
         if (nlpDetections.length === 0) { sendResponse(null); return; }

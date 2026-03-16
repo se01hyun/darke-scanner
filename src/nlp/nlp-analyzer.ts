@@ -33,10 +33,35 @@ const PRESSURE_SCORE_CONFIRMED = 60;
 export class NLPAnalyzer {
   private readonly matcher = new KeywordMatcher();
   private initialized = false;
+  /** ONNX 모델이 로드됐을 때만 true. false면 키워드+규칙 기반 분석만 수행한다. */
+  private modelReady = false;
 
   async init(): Promise<void> {
     await this.matcher.init();
     this.initialized = true;
+
+    // ONNX 모델 로드 시도 — 실패 시 키워드 전용 모드(현재 구현)로 안전하게 폴백한다.
+    // models/ 파일이 없거나, MV3 Service Worker에서 WASM이 막힌 환경을 모두 처리한다.
+    try {
+      await this.loadModel();
+      this.modelReady = true;
+    } catch {
+      // 모델 없음 또는 WASM 미지원 — keyword-only 모드로 계속 진행
+      this.modelReady = false;
+    }
+  }
+
+  /**
+   * ONNX 모델 파일 존재 여부를 확인한다.
+   * 실제 InferenceSession 생성은 Phase 3에서 구현한다.
+   *
+   * @throws 파일이 없거나 fetch 실패 시 예외를 던진다.
+   */
+  private async loadModel(): Promise<void> {
+    const modelUrl = chrome.runtime.getURL('models/koelectra-fomo.onnx');
+    const resp = await fetch(modelUrl, { method: 'HEAD' });
+    if (!resp.ok) throw new Error(`model not found: ${resp.status}`);
+    // TODO(Phase 3): ort.InferenceSession.create(modelUrl) 로 실제 추론 세션 초기화
   }
 
   async analyze(payload: NLPTextsPayload): Promise<DarkPatternDetection[]> {

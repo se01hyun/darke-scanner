@@ -8,7 +8,8 @@
       "WebFetch(domain:www.shinkim.com)",
       "WebFetch(domain:www.korea.kr)",
       "WebFetch(domain:ceur-ws.org)",
-      "WebFetch(domain:www.lawtimes.co.kr)"
+      "WebFetch(domain:www.lawtimes.co.kr)",
+      "Bash(wc:*)"
     ]
   }
 }
