@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dark-Scanner",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "공정위 19가지 기준으로 다크 패턴을 실시간 탐지하는 브라우저 확장 프로그램",
   "icons": {
     "16": "public/icon-16.png",
