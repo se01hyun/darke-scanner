@@ -2,48 +2,40 @@
   "manifest_version": 3,
   "name": "Dark-Scanner",
   "version": "1.0.0",
-  "description": "공정위 19가지 기준으로 다크 패턴을 실시간 탐지하는 브라우저 확장 프로그램",
-  "icons": {
-    "16": "public/icon-16.png",
-    "48": "public/icon-48.png",
-    "128": "public/icon-128.png"
-  },
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "public/icon-16.png",
-      "48": "public/icon-48.png"
-    },
-    "default_title": "Dark-Scanner"
-  },
+  "description": "공정거래위원회 가이드라인 기반 다크 패턴 탐지 확장 프로그램",
+  "permissions": ["storage", "tabs", "webRequest"],
+  "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "dist/background.js",
-    "type": "module"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["dist/content.js"],
+      "js": ["content.js", "overlay.js"],
       "run_at": "document_start"
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["dist/overlay.js"],
-      "run_at": "document_idle"
     }
   ],
-  "permissions": [
-    "webRequest",
-    "storage",
-    "scripting",
-    "offscreen"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
   "web_accessible_resources": [
     {
-      "resources": ["dist/page-interceptor.js", "public/*"],
+      "resources": [
+        "page-interceptor.js",
+        "dark-patterns.json",
+        "dom-selectors.json",
+        "fomo-keywords.json"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

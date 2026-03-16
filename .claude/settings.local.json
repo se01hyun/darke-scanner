@@ -10,7 +10,8 @@
       "WebFetch(domain:ceur-ws.org)",
       "WebFetch(domain:www.lawtimes.co.kr)",
       "Bash(wc:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cd:*)"
     ]
   }
 }
