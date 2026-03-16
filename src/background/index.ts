@@ -7,8 +7,19 @@ const ruleEngine = new RuleEngine();
 const sniffer = new NetworkSniffer();
 const nlpAnalyzer = new NLPAnalyzer();
 
-// 탭 닫힘 시 per-tab 상태 정리
-chrome.tabs.onRemoved.addListener((tabId) => sniffer.clearTab(tabId));
+// 탭 닫힘 시 per-tab 상태 정리 + 배지 초기화
+chrome.tabs.onRemoved.addListener((tabId) => {
+  sniffer.clearTab(tabId);
+  chrome.action.setBadgeText({ text: '', tabId });
+});
+
+/** 탭 아이콘 배지를 탐지 건수로 갱신한다. 0건이면 배지를 제거한다. */
+function updateBadge(tabId: number, count: number): void {
+  chrome.action.setBadgeText({ text: count > 0 ? String(count) : '', tabId });
+  if (count > 0) {
+    chrome.action.setBadgeBackgroundColor({ color: '#ef4444', tabId });
+  }
+}
 
 chrome.runtime.onMessage.addListener(
   (message: MessageType, sender, sendResponse) => {
@@ -32,6 +43,8 @@ chrome.runtime.onMessage.addListener(
 
         // 결과를 탭 세션에 저장 (팝업의 GET_RESULT 조회용)
         chrome.storage.session.set({ [`result:${tabId}`]: result });
+
+        updateBadge(tabId, result.detections.length);
 
         // 오버레이에 렌더링 지시
         chrome.tabs.sendMessage(tabId, { type: 'SCAN_COMPLETE', payload: result })
@@ -85,6 +98,7 @@ chrome.runtime.onMessage.addListener(
         if (existing) merged.scanTimestamp = existing.scanTimestamp;
 
         await chrome.storage.session.set({ [`result:${tabId}`]: merged });
+        updateBadge(tabId, merged.detections.length);
         chrome.tabs.sendMessage(tabId, { type: 'SCAN_COMPLETE', payload: merged })
           .catch(() => {});
 
