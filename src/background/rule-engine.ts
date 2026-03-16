@@ -1,10 +1,10 @@
 import type { DarkPatternDetection, DetectionResult } from '../types';
 
 export class RuleEngine {
-  async evaluate(detections: DarkPatternDetection[]): Promise<DetectionResult> {
+  async evaluate(detections: DarkPatternDetection[], pageUrl: string): Promise<DetectionResult> {
     const overallRiskScore = this.calcRiskScore(detections);
     return {
-      pageUrl: '',
+      pageUrl,
       scanTimestamp: Date.now(),
       overallRiskScore,
       detections,

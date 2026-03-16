@@ -12,7 +12,8 @@ chrome.tabs.onRemoved.addListener((tabId) => sniffer.clearTab(tabId));
 
 chrome.runtime.onMessage.addListener(
   (message: MessageType, sender, sendResponse) => {
-    const tabId = sender.tab?.id;
+    const tabId  = sender.tab?.id;
+    const tabUrl = sender.tab?.url ?? '';
 
     if (message.type === 'DOM_DETECTIONS') {
       const networkDetection = tabId !== undefined
@@ -23,7 +24,7 @@ chrome.runtime.onMessage.addListener(
         ? [...message.payload, networkDetection]
         : message.payload;
 
-      ruleEngine.evaluate(allDetections).then((result) => {
+      ruleEngine.evaluate(allDetections, tabUrl).then((result) => {
         // 팝업 응답
         sendResponse(result);
 
@@ -46,7 +47,7 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === 'SCRIPT_PATTERN') {
       const detection = sniffer.onScriptPattern(message.payload);
-      ruleEngine.evaluate([detection]).then(sendResponse);
+      ruleEngine.evaluate([detection], tabUrl).then(sendResponse);
       return true;
     }
 
@@ -75,12 +76,13 @@ chrome.runtime.onMessage.addListener(
           ...(existing?.detections ?? []),
           ...nlpDetections,
         ];
-        const merged = await ruleEngine.evaluate(allDetections);
-        // pageUrl / scanTimestamp는 기존 값 유지
-        if (existing) {
-          merged.pageUrl = existing.pageUrl;
-          merged.scanTimestamp = existing.scanTimestamp;
-        }
+        // pageUrl: 기존 DOM 스캔 결과에서 이미 설정된 값을 우선 사용
+        const merged = await ruleEngine.evaluate(
+          allDetections,
+          existing?.pageUrl ?? tabUrl,
+        );
+        // scanTimestamp는 최초 스캔 시각 유지
+        if (existing) merged.scanTimestamp = existing.scanTimestamp;
 
         await chrome.storage.session.set({ [`result:${tabId}`]: merged });
         chrome.tabs.sendMessage(tabId, { type: 'SCAN_COMPLETE', payload: merged })
