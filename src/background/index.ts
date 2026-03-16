@@ -1,9 +1,11 @@
 import { NetworkSniffer } from './network-sniffer';
 import { RuleEngine } from './rule-engine';
-import type { MessageType } from '../types';
+import { NLPAnalyzer } from '../nlp/nlp-analyzer';
+import type { MessageType, DetectionResult } from '../types';
 
 const ruleEngine = new RuleEngine();
 const sniffer = new NetworkSniffer();
+const nlpAnalyzer = new NLPAnalyzer();
 
 // 탭 닫힘 시 per-tab 상태 정리
 chrome.tabs.onRemoved.addListener((tabId) => sniffer.clearTab(tabId));
@@ -45,6 +47,34 @@ chrome.runtime.onMessage.addListener(
     if (message.type === 'SCRIPT_PATTERN') {
       const detection = sniffer.onScriptPattern(message.payload);
       ruleEngine.evaluate([detection]).then(sendResponse);
+      return true;
+    }
+
+    if (message.type === 'NLP_TEXTS' && tabId !== undefined) {
+      nlpAnalyzer.analyze(message.payload).then(async (nlpDetections) => {
+        if (nlpDetections.length === 0) { sendResponse(null); return; }
+
+        // 기존 세션 결과와 병합
+        const stored = await chrome.storage.session.get(`result:${tabId}`);
+        const existing = stored[`result:${tabId}`] as DetectionResult | undefined;
+
+        const allDetections = [
+          ...(existing?.detections ?? []),
+          ...nlpDetections,
+        ];
+        const merged = await ruleEngine.evaluate(allDetections);
+        // pageUrl / scanTimestamp는 기존 값 유지
+        if (existing) {
+          merged.pageUrl = existing.pageUrl;
+          merged.scanTimestamp = existing.scanTimestamp;
+        }
+
+        await chrome.storage.session.set({ [`result:${tabId}`]: merged });
+        chrome.tabs.sendMessage(tabId, { type: 'SCAN_COMPLETE', payload: merged })
+          .catch(() => {});
+
+        sendResponse(merged);
+      });
       return true;
     }
   }

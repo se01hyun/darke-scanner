@@ -62,11 +62,19 @@ export interface ScriptPatternPayload {
   patternType: 'random_counter' | 'timer_reset';
 }
 
+// NLP 텍스트 수집 페이로드
+export interface NLPTextsPayload {
+  pageTexts: string[];   // 상품명·설명·팝업 등 일반 텍스트
+  reviewTexts: string[]; // 리뷰/후기 텍스트
+  ctaTexts: string[];    // CTA 버튼·링크 텍스트
+}
+
 // 모듈 간 메시지 타입
 export type MessageType =
   | { type: 'DOM_DETECTIONS';      payload: DarkPatternDetection[] }
   | { type: 'NETWORK_RESPONSE';    payload: NetworkResponsePayload }
   | { type: 'SCRIPT_PATTERN';      payload: ScriptPatternPayload }
+  | { type: 'NLP_TEXTS';           payload: NLPTextsPayload }
   | { type: 'SCAN_COMPLETE';       payload: DetectionResult }
   | { type: 'GET_RESULT';          payload: { url: string } }
   | { type: 'RESULT_RESPONSE';     payload: DetectionResult | null };
