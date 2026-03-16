@@ -81,7 +81,24 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message.type === 'NETWORK_RESPONSE' && tabId !== undefined) {
-      sniffer.onNetworkResponse(message.payload, tabId);
+      const dripDetection = sniffer.onNetworkResponse(message.payload, tabId);
+      logger.log('BG', `NETWORK_RESPONSE 수신 — url=${message.payload.url} drip=${dripDetection !== null}`);
+
+      if (dripDetection !== null) {
+        // 순차공개 가격 탐지 결과를 기존 세션 결과에 병합
+        chrome.storage.session.get(`result:${tabId}`).then(async (stored) => {
+          const existing = stored[`result:${tabId}`] as DetectionResult | undefined;
+          const allDetections: DarkPatternDetection[] = [
+            ...(existing?.detections ?? []),
+            dripDetection,
+          ];
+          const merged = await ruleEngine.evaluate(allDetections, existing?.pageUrl ?? tabUrl);
+          if (existing) merged.scanTimestamp = existing.scanTimestamp;
+          await chrome.storage.session.set({ [`result:${tabId}`]: merged });
+          updateBadge(tabId, merged.detections.length);
+          chrome.tabs.sendMessage(tabId, { type: 'SCAN_COMPLETE', payload: merged }).catch(() => {});
+        });
+      }
       return false;
     }
 

@@ -25,6 +25,24 @@
       "input[type='checkbox'][checked]",
       "input[type='radio'][checked]"
     ],
+    "false_discount": [
+      "[class*='discount-rate']",
+      "[class*='sale-rate']",
+      "[class*='off-rate']",
+      "[class*='percent-off']",
+      "[class*='badge-discount']",
+      "[class*='dcrate']",
+      "[class*='sale-badge']"
+    ],
+    "nagging": [
+      "dialog[open]",
+      "[role='dialog']",
+      "[class*='popup']:not([class*='popup-menu']):not([class*='popup-close'])",
+      "[class*='modal']:not([class*='modal-close']):not([class*='modal-overlay'])",
+      "[class*='layer-pop']",
+      "[class*='layer-wrap']",
+      "[class*='bottom-sheet']"
+    ],
     "disguised_ads": [
       "[data-ad]",
       "[data-adunit]",

@@ -28,6 +28,35 @@ const COUNTDOWN_TEXT_RE = /\d{1,2}:\d{2}(:\d{2})?/;
 // 텍스트 노드 스캔 시 최대 탐지 수 (오탐 flood 방지)
 const MAX_TEXT_DETECTIONS = 5;
 
+// ─── 가이드라인 4: 거짓할인 상수 ─────────────────────────────────────────────
+// "50% 할인", "30% OFF" 등의 패턴
+const DISCOUNT_TEXT_RE = /(\d{1,3})\s*%\s*(할인|OFF|SALE|세일)/i;
+// 원래 가격을 나타내는 취소선 요소 선택자
+const ORIGIN_PRICE_SELECTORS = [
+  'del', 's', '[class*="origin"]', '[class*="before-price"]',
+  '[class*="original-price"]', '[class*="list-price"]', '[class*="org-price"]',
+];
+
+// ─── 가이드라인 11: 취소·탈퇴 방해 상수 ──────────────────────────────────────
+// 취소·해지 관련 레이블
+const CANCEL_SERVICE_TERMS = [
+  '해지', '탈퇴', '구독취소', '구독 취소', '회원탈퇴', '이용취소', '서비스 해지', '해약',
+];
+const CANCEL_OPACITY_THRESHOLD = 0.5;
+const CANCEL_FONT_THRESHOLD    = 12; // px
+
+// ─── 가이드라인 13: 가격비교 방해 상수 ───────────────────────────────────────
+const COMPARISON_PREVENTION_TERMS = [
+  '가격문의', '가격 문의', '가격협의', '가격 협의',
+  '별도문의', '별도 문의', '문의바람', '협의요망', '전화문의',
+];
+
+// ─── 가이드라인 15: 반복간섭 상수 ────────────────────────────────────────────
+const NAGGING_CTA_KEYWORDS = [
+  '구독하기', '알림받기', '알림 받기', '동의하기',
+  '이벤트 참여', '혜택받기', '혜택 받기', '지금 가입',
+];
+
 // ─── 가이드라인 7: 위장광고 상수 ─────────────────────────────────────────────
 // 광고 요소 주변에 이 텍스트 중 하나라도 있으면 정상 고지로 간주 → 스킵
 const AD_DISCLOSURE_KEYWORDS = ['광고', '스폰서', '협찬', 'AD', 'Sponsored', 'ADVERTISEMENT', '유료광고', 'Paid'];
@@ -57,21 +86,28 @@ export class DOMScanner {
     const t0 = performance.now();
     logger.group(`DOM Scan — ${document.location.href}`);
 
-    const countdown       = this.detectCountdown();
-    const stockWarning    = this.detectStockWarning();
-    const preselected     = this.detectPreselectedOptions();
-    const weakenedCancel  = this.detectVisuallyWeakenedCancel();
-    const disguisedAds    = this.detectDisguisedAds();
-    const hiddenInfo      = this.detectHiddenInformation();
+    const countdown        = this.detectCountdown();
+    const stockWarning     = this.detectStockWarning();
+    const preselected      = this.detectPreselectedOptions();
+    const weakenedCancel   = this.detectVisuallyWeakenedCancel();
+    const disguisedAds     = this.detectDisguisedAds();
+    const hiddenInfo       = this.detectHiddenInformation();
+    const falseDiscount    = this.detectFalseDiscount();
+    const hardToCancel     = this.detectHardToCancel();
+    const comparisonPrev   = this.detectComparisonPrevention();
+    const nagging          = this.detectNagging();
 
     const detections: DarkPatternDetection[] = [
       ...countdown, ...stockWarning, ...preselected, ...weakenedCancel,
       ...disguisedAds, ...hiddenInfo,
+      ...falseDiscount, ...hardToCancel, ...comparisonPrev, ...nagging,
     ];
 
     logger.log('DOM', `스캔 완료 ${(performance.now() - t0).toFixed(1)}ms | 총 ${detections.length}건`
       + ` (카운트다운:${countdown.length} 재고:${stockWarning.length} 사전선택:${preselected.length}`
-      + ` 약화취소:${weakenedCancel.length} 위장광고:${disguisedAds.length} 숨겨진정보:${hiddenInfo.length})`);
+      + ` 약화취소:${weakenedCancel.length} 위장광고:${disguisedAds.length} 숨겨진정보:${hiddenInfo.length}`
+      + ` 거짓할인:${falseDiscount.length} 취소방해:${hardToCancel.length}`
+      + ` 가격비교방해:${comparisonPrev.length} 반복간섭:${nagging.length})`);
     logger.detections('DOM', detections);
     logger.groupEnd();
 
@@ -441,6 +477,234 @@ export class DOMScanner {
           detail: { matchedTerm, fontSize, text: snippet },
         },
         element: getElementInfo(parent),
+      });
+    }
+
+    return detections;
+  }
+
+  // ─── 공정위 기준 4번: 거짓할인 (False Discount) ─────────────────────────────
+  // 할인율은 표시하지만 원래 가격(취소선)이 없거나 확인 불가능한 경우 탐지
+  private detectFalseDiscount(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    const processElement = (el: HTMLElement, selector: string): void => {
+      if (seen.has(el)) return;
+      seen.add(el);
+
+      // 가격 컨테이너 범위: 최대 3단계 상위
+      const container =
+        el.closest('[class*="product"],[class*="item"],[class*="price"],[class*="goods"]')
+        ?? el.parentElement?.parentElement
+        ?? el.parentElement
+        ?? el;
+
+      // 원가 요소 존재 여부 확인
+      const hasOriginPrice = ORIGIN_PRICE_SELECTORS.some(
+        (s) => container.querySelector(s) !== null,
+      );
+      if (hasOriginPrice) return; // 원가 있음 → 정상 할인 표시
+
+      const text = el.textContent?.trim() ?? '';
+      const match = DISCOUNT_TEXT_RE.exec(text);
+      if (!match && selector === '(text-match)') return; // 텍스트 워크: 패턴 없으면 스킵
+
+      const claimedRate = match ? parseInt(match[1], 10) : null;
+      logger.log('DOM:거짓할인',
+        `원가 없는 할인율 — ${claimedRate ?? '?'}% selector="${selector}" text="${text.slice(0, 60)}"`);
+
+      detections.push({
+        id: generateId(),
+        guideline: 4,
+        guidelineName: '거짓할인',
+        severity: claimedRate !== null && claimedRate >= 50 ? 'high' : 'medium',
+        confidence: 'suspicious',
+        module: 'dom',
+        description: `할인율(${claimedRate ?? '?'}%)이 표시되어 있지만 원래 가격이 확인되지 않아 실제 할인 여부를 판단할 수 없습니다.`,
+        evidence: {
+          type: 'dom_element',
+          raw: el.outerHTML.slice(0, 300),
+          detail: { selector, claimedRate, hasOriginPrice },
+        },
+        element: getElementInfo(el),
+      });
+    };
+
+    // 1) CSS 선택자 기반
+    for (const selector of (domSelectors.selectors as Record<string, string[]>)['false_discount'] ?? []) {
+      document.querySelectorAll<HTMLElement>(selector).forEach((el) => processElement(el, selector));
+    }
+
+    // 2) 텍스트 기반 스캔 (선택자 미매칭 케이스 보완)
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    let count = 0;
+    while ((node = walker.nextNode()) && count < 10) {
+      const text = node.textContent ?? '';
+      if (!DISCOUNT_TEXT_RE.test(text)) continue;
+      const parent = node.parentElement;
+      if (!parent || seen.has(parent)) continue;
+      count++;
+      processElement(parent, '(text-match)');
+    }
+
+    return detections;
+  }
+
+  // ─── 공정위 기준 11번: 취소·탈퇴 등의 방해 (Hard to Cancel) ───────────────
+  // 해지·탈퇴 UI가 숨겨지거나 시각적으로 접근하기 어렵게 설계된 경우 탐지
+  private detectHardToCancel(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+
+    while ((node = walker.nextNode())) {
+      const text = node.textContent ?? '';
+      const matchedTerm = CANCEL_SERVICE_TERMS.find((term) => text.includes(term));
+      if (!matchedTerm) continue;
+
+      const parent = node.parentElement;
+      if (!parent || seen.has(parent)) continue;
+      seen.add(parent);
+
+      // 실제 취소 UI(버튼·링크)인지 확인 (일반 설명 텍스트 제외)
+      const isActionable =
+        ['BUTTON', 'A', 'INPUT', 'LABEL'].includes(parent.tagName) ||
+        parent.getAttribute('role') === 'button';
+      if (!isActionable) continue;
+
+      const style      = getComputedStyle(parent);
+      const opacity    = parseFloat(style.opacity);
+      const fontSize   = parseFloat(style.fontSize);
+      const display    = style.display;
+      const visibility = style.visibility;
+
+      const signals: string[] = [];
+      if (display === 'none' || visibility === 'hidden') {
+        signals.push('display/visibility로 완전히 숨겨짐');
+      }
+      if (opacity < CANCEL_OPACITY_THRESHOLD) {
+        signals.push(`불투명도 ${(opacity * 100).toFixed(0)}%`);
+      }
+      if (fontSize < CANCEL_FONT_THRESHOLD) {
+        signals.push(`글자 크기 ${fontSize}px`);
+      }
+      if (signals.length === 0) continue;
+
+      logger.log('DOM:취소방해',
+        `term="${matchedTerm}" 신호: ${signals.join(' | ')}`);
+
+      detections.push({
+        id: generateId(),
+        guideline: 11,
+        guidelineName: '취소·탈퇴 등의 방해',
+        severity: signals.length >= 2 ? 'high' : 'medium',
+        confidence: display === 'none' || visibility === 'hidden' ? 'confirmed' : 'suspicious',
+        module: 'dom',
+        description: `취소·해지 UI("${matchedTerm}")가 의도적으로 숨겨지거나 접근하기 어렵게 설계되어 있습니다.`,
+        evidence: {
+          type: 'dom_element',
+          raw: parent.outerHTML.slice(0, 300),
+          detail: { matchedTerm, signals, opacity, fontSize, display, visibility },
+        },
+        element: getElementInfo(parent),
+      });
+    }
+
+    return detections;
+  }
+
+  // ─── 공정위 기준 13번: 가격비교 방해 (Comparison Prevention) ───────────────
+  // 상품 목록에서 "가격문의"·"가격협의" 등으로 가격을 숨겨 비교를 차단하는 경우 탐지
+  private detectComparisonPrevention(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    let count = 0;
+
+    while ((node = walker.nextNode()) && count < 10) {
+      const text = (node.textContent ?? '').trim();
+      const matchedTerm = COMPARISON_PREVENTION_TERMS.find((t) => text.includes(t));
+      if (!matchedTerm) continue;
+
+      const parent = node.parentElement;
+      if (!parent || seen.has(parent)) continue;
+      seen.add(parent);
+
+      // 상품 카드·목록 컨텍스트 확인 (네비게이션·CS 문구 제외)
+      const productCtx = parent.closest(
+        '[class*="product"],[class*="item"],[class*="goods"],[class*="card"],[class*="list"]',
+      );
+      if (!productCtx) continue;
+      count++;
+
+      logger.log('DOM:가격비교방해',
+        `term="${matchedTerm}" text="${text.slice(0, 60)}"`);
+
+      detections.push({
+        id: generateId(),
+        guideline: 13,
+        guidelineName: '가격비교 방해',
+        severity: 'medium',
+        confidence: 'suspicious',
+        module: 'dom',
+        description: `"${matchedTerm}" 문구로 가격 정보를 감추어 소비자의 직접 비교를 차단합니다.`,
+        evidence: {
+          type: 'dom_element',
+          raw: parent.outerHTML.slice(0, 300),
+          detail: { matchedTerm, text: text.slice(0, 100) },
+        },
+        element: getElementInfo(parent),
+      });
+    }
+
+    return detections;
+  }
+
+  // ─── 공정위 기준 15번: 반복간섭 (Nagging) ────────────────────────────────
+  // 마케팅 CTA나 FOMO 문구를 포함한 팝업·모달·다이얼로그가 활성화된 경우 탐지
+  private detectNagging(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    for (const selector of (domSelectors.selectors as Record<string, string[]>)['nagging'] ?? []) {
+      document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        if (seen.has(el)) return;
+        seen.add(el);
+
+        // 화면에 실제로 보이는 요소만 처리
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const elText = el.textContent ?? '';
+        const hasCTA  = NAGGING_CTA_KEYWORDS.some((kw) => elText.includes(kw));
+        const hasFOMO = fomoKeywords.keywords.some((kw) => elText.includes(kw));
+
+        if (!hasCTA && !hasFOMO) return;
+
+        logger.log('DOM:반복간섭',
+          `selector="${selector}" CTA=${hasCTA} FOMO=${hasFOMO} text="${elText.slice(0, 60)}"`);
+
+        detections.push({
+          id: generateId(),
+          guideline: 15,
+          guidelineName: '반복간섭',
+          severity: hasCTA && hasFOMO ? 'high' : 'medium',
+          confidence: hasCTA ? 'confirmed' : 'suspicious',
+          module: 'dom',
+          description: '마케팅 팝업/모달이 사용자의 주요 작업을 방해하며 반복 노출될 수 있습니다.',
+          evidence: {
+            type: 'dom_element',
+            raw: el.outerHTML.slice(0, 300),
+            detail: { selector, hasCTA, hasFOMO },
+          },
+          element: getElementInfo(el),
+        });
       });
     }
 
