@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dark-Scanner</title>
+  <style>
+    /* ── 리셋 & 토큰 ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #1e1e2e;
+      --surface:   #181825;
+      --surface2:  #11111b;
+      --border:    #313244;
+      --text:      #cdd6f4;
+      --subtext:   #a6adc8;
+      --muted:     #585b70;
+
+      --c-high:    #f38ba8;
+      --c-medium:  #fab387;
+      --c-low:     #f9e2af;
+      --c-safe:    #a6e3a1;
+      --c-confirm: #a6e3a1;
+      --c-suspect: #f9e2af;
+    }
+
+    html { width: 360px; }
+
+    body {
+      width: 360px;
+      min-height: 120px;
+      max-height: 560px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── 헤더 ────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 12px 14px 11px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-icon { font-size: 16px; line-height: 1; }
+    .header-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.2px;
+    }
+    .header-badge {
+      margin-left: auto;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* ── 스크롤 영역 ─────────────────────────────────────── */
+    .scroll-area {
+      overflow-y: auto;
+      flex: 1;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── 상태 뷰 (로딩 / 빈 상태) ───────────────────────── */
+    .state-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 36px 20px;
+      color: var(--subtext);
+      font-size: 13px;
+      text-align: center;
+    }
+    .state-icon { font-size: 28px; line-height: 1; }
+    .state-title { font-weight: 600; color: var(--text); }
+    .state-desc  { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    /* 로딩 스피너 */
+    .spinner {
+      width: 22px; height: 22px;
+      border: 2px solid var(--border);
+      border-top-color: var(--subtext);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── 위험도 섹션 ─────────────────────────────────────── */
+    .score-section {
+      padding: 16px 14px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .score-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .score-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+    .score-number {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+    .score-unit { font-size: 13px; color: var(--muted); }
+    .score-verdict {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 12px;
+    }
+    .verdict-safe    { background: #1c3a2a; color: var(--c-safe);   }
+    .verdict-caution { background: #3a3020; color: var(--c-low);    }
+    .verdict-danger  { background: #3a1c28; color: var(--c-high);   }
+
+    /* 점수 바 */
+    .score-bar-track {
+      height: 6px;
+      background: var(--surface);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      width: 0;                          /* JS에서 설정 */
+      border-radius: 3px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .fill-safe    { background: var(--c-safe);   }
+    .fill-caution { background: var(--c-low);    }
+    .fill-danger  { background: var(--c-high);   }
+
+    .score-summary {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--subtext);
+    }
+
+    /* ── 탐지 목록 ───────────────────────────────────────── */
+    .list-header {
+      padding: 10px 14px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detection-card {
+      display: flex;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: default;
+    }
+    .detection-card:last-child { border-bottom: none; }
+    .detection-card:hover { background: var(--surface); }
+
+    /* 좌측 severity 색상 바 */
+    .card-bar {
+      width: 3px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      align-self: stretch;
+    }
+    .bar-high   { background: var(--c-high);   }
+    .bar-medium { background: var(--c-medium); }
+    .bar-low    { background: var(--c-low);    }
+
+    .card-body { flex: 1; min-width: 0; }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+    .guideline-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 0 5px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .card-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 칩 */
+    .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 5px; }
+    .chip {
+      padding: 0 6px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.7;
+      white-space: nowrap;
+    }
+    .chip-confirmed  { background: #1e3a2a; color: var(--c-confirm); }
+    .chip-suspicious { background: #3a3020; color: var(--c-suspect); }
+    .chip-high   { background: #3a1c28; color: var(--c-high);   }
+    .chip-medium { background: #3a2a1c; color: var(--c-medium); }
+    .chip-low    { background: #3a3820; color: var(--c-low);    }
+
+    .card-desc {
+      font-size: 11px;
+      color: var(--subtext);
+      line-height: 1.5;
+      word-break: keep-all;
+    }
+    .card-meta {
+      margin-top: 4px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* ── 푸터 ────────────────────────────────────────────── */
+    .footer {
+      padding: 8px 14px;
+      font-size: 10px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      text-align: center;
+      flex-shrink: 0;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <!-- 헤더 -->
+  <header class="header">
+    <span class="header-icon">🔍</span>
+    <span class="header-title">Dark-Scanner</span>
+    <span class="header-badge">공정위 19기준</span>
+  </header>
+
+  <!-- 콘텐츠 (JS가 교체) -->
+  <div class="scroll-area" id="root">
+    <div class="state-view">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- 푸터 -->
+  <footer class="footer">
+    공정위 기준 기반 자동 분석 결과입니다. 최종 판단은 사용자가 직접 확인하세요.
+  </footer>
+
+  <script type="module" src="dist/popup.js"></script>
+</body>
+</html>
