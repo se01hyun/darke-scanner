@@ -25,6 +25,11 @@
       "matches": ["<all_urls>"],
       "js": ["dist/content.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/overlay.js"],
+      "run_at": "document_idle"
     }
   ],
   "permissions": [
@@ -38,7 +43,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["dist/overlay.js", "dist/page-interceptor.js", "public/*"],
+      "resources": ["dist/page-interceptor.js", "public/*"],
       "matches": ["<all_urls>"]
     }
   ]

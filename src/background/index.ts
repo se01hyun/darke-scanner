@@ -21,7 +21,19 @@ chrome.runtime.onMessage.addListener(
         ? [...message.payload, networkDetection]
         : message.payload;
 
-      ruleEngine.evaluate(allDetections).then(sendResponse);
+      ruleEngine.evaluate(allDetections).then((result) => {
+        // 팝업 응답
+        sendResponse(result);
+
+        if (tabId === undefined) return;
+
+        // 결과를 탭 세션에 저장 (팝업의 GET_RESULT 조회용)
+        chrome.storage.session.set({ [`result:${tabId}`]: result });
+
+        // 오버레이에 렌더링 지시
+        chrome.tabs.sendMessage(tabId, { type: 'SCAN_COMPLETE', payload: result })
+          .catch(() => { /* 탭이 닫혔거나 overlay 미로드 시 무시 */ });
+      });
       return true;
     }
 

@@ -64,7 +64,7 @@ XMLHttpRequest.prototype.open = function (
   ...rest: [boolean?, string?, string?]
 ): void {
   this._dsUrl = url.toString();
-  originalOpen.call(this, method, url, ...rest);
+  originalOpen.call(this, method, url, rest[0] ?? true, rest[1], rest[2]);
 };
 
 XMLHttpRequest.prototype.send = function (this: AugmentedXHR, body?: Document | XMLHttpRequestBodyInit | null): void {

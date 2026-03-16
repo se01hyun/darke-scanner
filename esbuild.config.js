@@ -8,6 +8,7 @@ const baseConfig = {
   target: 'chrome120',
   sourcemap: isWatch ? 'inline' : false,
   minify: !isWatch,
+  outdir: '.',   // entryPoints의 out 경로가 dist/xxx 이므로 outdir은 프로젝트 루트
 };
 
 const entryPoints = [
