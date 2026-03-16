@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "selectors": {
+    "countdown": [
+      "[data-countdown]",
+      "[class*='countdown']",
+      "[class*='timer']",
+      "[id*='countdown']",
+      "[id*='timer']"
+    ],
+    "stock_warning": [
+      "[class*='stock']",
+      "[class*='remain']",
+      "[class*='soldout']",
+      "[class*='limited']"
+    ],
+    "preselected_options": [
+      "input[type='checkbox'][checked]",
+      "input[type='radio'][checked]"
+    ]
+  }
+}

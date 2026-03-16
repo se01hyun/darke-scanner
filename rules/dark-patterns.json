@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "patterns": [
+    { "id": 1,  "name": "잘못된 긴급성",      "en": "False Urgency",           "module": "dom" },
+    { "id": 2,  "name": "희소성 과장",         "en": "Scarcity",                "module": "dom" },
+    { "id": 3,  "name": "사회적 증거 조작",    "en": "Social Proof",            "module": "network" },
+    { "id": 4,  "name": "숨겨진 비용",         "en": "Hidden Costs",            "module": "dom" },
+    { "id": 5,  "name": "바구니 담기",         "en": "Basket Sneaking",         "module": "dom" },
+    { "id": 6,  "name": "강제 계정 생성",      "en": "Forced Account Creation", "module": "dom" },
+    { "id": 7,  "name": "구독 함정",           "en": "Subscription Trap",       "module": "dom" },
+    { "id": 8,  "name": "불명확한 구독 취소",  "en": "Hard to Cancel",          "module": "dom" },
+    { "id": 9,  "name": "오인 유도 광고",      "en": "Disguised Ads",           "module": "dom" },
+    { "id": 10, "name": "선택 장애 유발",      "en": "Trick Questions",         "module": "dom" },
+    { "id": 11, "name": "기본값 조작",         "en": "Preselection",            "module": "dom" },
+    { "id": 12, "name": "인터페이스 간섭",     "en": "Interface Interference",  "module": "dom" },
+    { "id": 13, "name": "주의 분산",           "en": "Misdirection",            "module": "dom" },
+    { "id": 14, "name": "감정적 조작",         "en": "Confirmshaming",          "module": "nlp" },
+    { "id": 15, "name": "가짜 리뷰",           "en": "Fake Reviews",            "module": "nlp" },
+    { "id": 16, "name": "유인 판매",           "en": "Bait and Switch",         "module": "dom" },
+    { "id": 17, "name": "개인정보 과도 수집",  "en": "Privacy Zuckering",       "module": "dom" },
+    { "id": 18, "name": "로딩 조작",           "en": "Forced Continuity",       "module": "dom" },
+    { "id": 19, "name": "비교 방해",           "en": "Comparison Prevention",   "module": "dom" }
+  ]
+}

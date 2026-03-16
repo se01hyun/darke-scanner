@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Dark-Scanner",
+  "version": "0.1.0",
+  "description": "공정위 19가지 기준으로 다크 패턴을 실시간 탐지하는 브라우저 확장 프로그램",
+  "icons": {
+    "16": "public/icon-16.png",
+    "48": "public/icon-48.png",
+    "128": "public/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "public/icon-16.png",
+      "48": "public/icon-48.png"
+    },
+    "default_title": "Dark-Scanner"
+  },
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "webRequest",
+    "storage",
+    "scripting",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["dist/overlay.js", "public/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
