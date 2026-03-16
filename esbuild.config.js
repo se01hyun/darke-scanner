@@ -11,10 +11,12 @@ const baseConfig = {
 };
 
 const entryPoints = [
-  { in: 'src/content/index.ts',    out: 'dist/content'    },
-  { in: 'src/background/index.ts', out: 'dist/background' },
-  { in: 'src/popup/index.ts',      out: 'dist/popup'      },
-  { in: 'src/overlay/index.ts',    out: 'dist/overlay'    },
+  { in: 'src/content/index.ts',             out: 'dist/content'           },
+  { in: 'src/background/index.ts',          out: 'dist/background'        },
+  { in: 'src/popup/index.ts',               out: 'dist/popup'             },
+  { in: 'src/overlay/index.ts',             out: 'dist/overlay'           },
+  // page-interceptor: 페이지 main world에 주입되는 별도 번들 (chrome API 미포함)
+  { in: 'src/content/page-interceptor.ts',  out: 'dist/page-interceptor'  },
 ];
 
 if (isWatch) {

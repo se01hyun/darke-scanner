@@ -50,9 +50,23 @@ export interface NLPResult {
   reviewClusters: ReviewCluster[];
 }
 
+// 페이지 main world → content script postMessage 페이로드
+export interface NetworkResponsePayload {
+  url: string;
+  data: Record<string, unknown>;
+}
+
+export interface ScriptPatternPayload {
+  src: string;         // 스크립트 출처 (inline | URL)
+  snippet: string;     // 탐지된 코드 스니펫 (≤300자)
+  patternType: 'random_counter' | 'timer_reset';
+}
+
 // 모듈 간 메시지 타입
 export type MessageType =
-  | { type: 'DOM_DETECTIONS';    payload: DarkPatternDetection[] }
-  | { type: 'SCAN_COMPLETE';     payload: DetectionResult }
-  | { type: 'GET_RESULT';        payload: { url: string } }
-  | { type: 'RESULT_RESPONSE';   payload: DetectionResult | null };
+  | { type: 'DOM_DETECTIONS';      payload: DarkPatternDetection[] }
+  | { type: 'NETWORK_RESPONSE';    payload: NetworkResponsePayload }
+  | { type: 'SCRIPT_PATTERN';      payload: ScriptPatternPayload }
+  | { type: 'SCAN_COMPLETE';       payload: DetectionResult }
+  | { type: 'GET_RESULT';          payload: { url: string } }
+  | { type: 'RESULT_RESPONSE';     payload: DetectionResult | null };
