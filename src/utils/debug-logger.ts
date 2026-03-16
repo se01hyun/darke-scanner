@@ -1,7 +1,10 @@
 // Phase 5 QA — 실사이트 검증용 디버그 로거
-// 실사이트 확인 완료 후 배포 전 DEBUG_MODE = false 로 변경할 것
+//
+// DEBUG_MODE는 빌드 시점에 esbuild `define`으로 주입되는 __DS_DEBUG__ 값을 따릅니다.
+//   개발:        npm run build       → __DS_DEBUG__ = true  (로그 활성)
+//   프로덕션:   npm run build:prod  → __DS_DEBUG__ = false (로그 비활성 + dead-code 제거)
 
-export const DEBUG_MODE = true;
+export const DEBUG_MODE: boolean = __DS_DEBUG__;
 
 const P = '[DarkScanner]';
 

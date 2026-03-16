@@ -28,6 +28,21 @@ const COUNTDOWN_TEXT_RE = /\d{1,2}:\d{2}(:\d{2})?/;
 // 텍스트 노드 스캔 시 최대 탐지 수 (오탐 flood 방지)
 const MAX_TEXT_DETECTIONS = 5;
 
+// ─── 가이드라인 7: 위장광고 상수 ─────────────────────────────────────────────
+// 광고 요소 주변에 이 텍스트 중 하나라도 있으면 정상 고지로 간주 → 스킵
+const AD_DISCLOSURE_KEYWORDS = ['광고', '스폰서', '협찬', 'AD', 'Sponsored', 'ADVERTISEMENT', '유료광고', 'Paid'];
+// 광고 요소의 텍스트/타이틀에 이 단어가 있어도 스킵 (광고주가 자체 표시한 경우)
+const AD_SELF_LABEL_RE = /광고|스폰서|AD\b|Sponsored|협찬/i;
+
+// ─── 가이드라인 12: 숨겨진 정보 상수 ────────────────────────────────────────
+// 이 단어가 포함된 텍스트가 매우 작은 폰트로 표시되면 숨겨진 정보로 탐지
+const HIDDEN_INFO_TERMS = [
+  '환불', '취소', '약관', '수수료', '위약금', '자동갱신', '자동결제',
+  '별도청구', '추가비용', '유료전환', '청약철회', '면책',
+];
+// font-size 이 값(px) 미만이면 "숨겨진" 텍스트로 판단
+const HIDDEN_FONT_THRESHOLD = 11;
+
 export class DOMScanner {
   private observer: MutationObserver | null = null;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -46,13 +61,17 @@ export class DOMScanner {
     const stockWarning    = this.detectStockWarning();
     const preselected     = this.detectPreselectedOptions();
     const weakenedCancel  = this.detectVisuallyWeakenedCancel();
+    const disguisedAds    = this.detectDisguisedAds();
+    const hiddenInfo      = this.detectHiddenInformation();
 
     const detections: DarkPatternDetection[] = [
       ...countdown, ...stockWarning, ...preselected, ...weakenedCancel,
+      ...disguisedAds, ...hiddenInfo,
     ];
 
     logger.log('DOM', `스캔 완료 ${(performance.now() - t0).toFixed(1)}ms | 총 ${detections.length}건`
-      + ` (카운트다운:${countdown.length} 재고:${stockWarning.length} 사전선택:${preselected.length} 약화취소:${weakenedCancel.length})`);
+      + ` (카운트다운:${countdown.length} 재고:${stockWarning.length} 사전선택:${preselected.length}`
+      + ` 약화취소:${weakenedCancel.length} 위장광고:${disguisedAds.length} 숨겨진정보:${hiddenInfo.length})`);
     logger.detections('DOM', detections);
     logger.groupEnd();
 
@@ -302,6 +321,126 @@ export class DOMScanner {
           },
         },
         element: getElementInfo(cancelBtn),
+      });
+    }
+
+    return detections;
+  }
+
+  // ─── 공정위 기준 7번: 위장광고 (Disguised Ads) ──────────────────────────────
+  // 광고 속성·클래스가 있는 요소 주변에 공식 광고 표시(고지 텍스트)가 없으면 탐지
+  private detectDisguisedAds(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    for (const selector of domSelectors.selectors.disguised_ads) {
+      document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        if (seen.has(el)) return;
+        seen.add(el);
+
+        // 보이지 않는 요소는 스킵 (숨겨진 광고 컨테이너 등)
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return;
+
+        // 요소 자신 또는 인접 영역에 광고 고지 텍스트가 있으면 정상 광고 → 스킵
+        const areaText = this.getAdDisclosureArea(el);
+        if (AD_DISCLOSURE_KEYWORDS.some((kw) => areaText.includes(kw))) {
+          logger.log('DOM:위장광고', `고지 확인됨 — 스킵 (selector="${selector}")`);
+          return;
+        }
+        // 요소 자체 title/aria-label에 광고 자체 레이블이 있어도 스킵
+        const title = el.getAttribute('title') ?? '';
+        const aria  = el.getAttribute('aria-label') ?? '';
+        if (AD_SELF_LABEL_RE.test(title) || AD_SELF_LABEL_RE.test(aria)) return;
+
+        logger.log('DOM:위장광고', `탐지 — selector="${selector}" areaText="${areaText.slice(0, 60)}"`);
+
+        detections.push({
+          id: generateId(),
+          guideline: 7,
+          guidelineName: '위장광고',
+          severity: 'medium',
+          // 광고 속성이 명확히 존재하지만 고지가 없으면 confirmed, iframe 등은 suspicious
+          confidence: selector.startsWith('iframe') ? 'suspicious' : 'confirmed',
+          module: 'dom',
+          description: '광고로 표시되어야 할 요소에 광고 고지(AD·광고·스폰서 등) 표시가 없습니다.',
+          evidence: {
+            type: 'dom_element',
+            raw: el.outerHTML.slice(0, 300),
+            detail: { selector, disclosureAreaText: areaText.slice(0, 100) },
+          },
+          element: getElementInfo(el),
+        });
+      });
+    }
+
+    return detections;
+  }
+
+  /**
+   * 광고 요소 주변(자신 + 부모 1단계 + 이전/다음 형제)의 텍스트를 수집한다.
+   * 광고 고지 텍스트는 보통 광고 컨테이너 바로 위·옆에 위치하기 때문이다.
+   */
+  private getAdDisclosureArea(el: HTMLElement): string {
+    const parts: string[] = [];
+    parts.push(el.textContent ?? '');
+    if (el.parentElement) {
+      parts.push(el.parentElement.textContent ?? '');
+    }
+    const prev = el.previousElementSibling;
+    const next = el.nextElementSibling;
+    if (prev) parts.push(prev.textContent ?? '');
+    if (next) parts.push(next.textContent ?? '');
+    return parts.join(' ');
+  }
+
+  // ─── 공정위 기준 12번: 숨겨진 정보 (Hidden Information) ────────────────────
+  // 환불·수수료·자동갱신 등 중요 고지 문구가 매우 작은 폰트(≤10px)로 표시되는 경우 탐지
+  private detectHiddenInformation(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+
+    while ((node = walker.nextNode())) {
+      const text = node.textContent ?? '';
+      const matchedTerm = HIDDEN_INFO_TERMS.find((term) => text.includes(term));
+      if (!matchedTerm) continue;
+
+      const parent = node.parentElement;
+      if (!parent || seen.has(parent)) continue;
+
+      // 스크린 밖 요소(비표시) 스킵
+      const rect = parent.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue;
+
+      const style    = getComputedStyle(parent);
+      const fontSize = parseFloat(style.fontSize);
+
+      // 폰트 크기 기준 미달이면 탐지
+      if (fontSize > HIDDEN_FONT_THRESHOLD) continue;
+
+      seen.add(parent);
+
+      const snippet = text.trim().slice(0, 120);
+      logger.log('DOM:숨겨진정보',
+        `term="${matchedTerm}" fontSize=${fontSize}px text="${snippet}"`);
+
+      detections.push({
+        id: generateId(),
+        guideline: 12,
+        guidelineName: '숨겨진 정보',
+        severity: fontSize <= 8 ? 'high' : 'medium',
+        confidence: 'suspicious',
+        module: 'dom',
+        description: `중요 정보("${matchedTerm}")가 ${fontSize}px의 매우 작은 글자로 표시되어 있습니다.`,
+        evidence: {
+          type: 'dom_element',
+          raw: parent.outerHTML.slice(0, 300),
+          detail: { matchedTerm, fontSize, text: snippet },
+        },
+        element: getElementInfo(parent),
       });
     }
 

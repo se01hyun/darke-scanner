@@ -24,6 +24,25 @@
     "preselected_options": [
       "input[type='checkbox'][checked]",
       "input[type='radio'][checked]"
+    ],
+    "disguised_ads": [
+      "[data-ad]",
+      "[data-adunit]",
+      "[data-ad-slot]",
+      "[data-ad-client]",
+      "[data-google-query-id]",
+      "[class*='adsbygoogle']",
+      "[class*='ad-wrap']",
+      "[class*='ad-banner']",
+      "[class*='ad-container']",
+      "[class*='advert']",
+      "[class*='sponsor-']",
+      "[class*='sponsored-']",
+      "iframe[src*='doubleclick.net']",
+      "iframe[src*='googlesyndication']",
+      "iframe[src*='mobon.net']",
+      "iframe[src*='naverads']",
+      "iframe[src*='kakaocdn']"
     ]
   },
   "removed_in_v1.1.0": {

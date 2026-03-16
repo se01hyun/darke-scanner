@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.config.js",
+    "build:prod": "node esbuild.config.js --prod",
     "watch": "node esbuild.config.js --watch",
     "typecheck": "tsc --noEmit"
   },

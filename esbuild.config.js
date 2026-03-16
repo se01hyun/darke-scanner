@@ -1,13 +1,20 @@
 import * as esbuild from 'esbuild';
 
 const isWatch = process.argv.includes('--watch');
+// --prod 플래그 또는 NODE_ENV=production 환경 변수로 프로덕션 빌드 활성화
+const isProd  = process.argv.includes('--prod') || process.env.NODE_ENV === 'production';
 
 const baseConfig = {
   bundle: true,
   format: 'esm',
   target: 'chrome120',
   sourcemap: isWatch ? 'inline' : false,
-  minify: !isWatch,
+  minify: isProd,
+  // __DS_DEBUG__: 개발=true, 프로덕션=false
+  // esbuild가 리터럴로 인라인하여 if(!__DS_DEBUG__) 분기를 dead-code로 제거한다.
+  define: {
+    '__DS_DEBUG__': isProd ? 'false' : 'true',
+  },
   outdir: '.',   // entryPoints의 out 경로가 dist/xxx 이므로 outdir은 프로젝트 루트
 };
 
