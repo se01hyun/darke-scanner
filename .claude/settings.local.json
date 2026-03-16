@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "WebSearch",
+      "WebFetch(domain:www.ftc.go.kr)",
+      "WebFetch(domain:www.kimchang.com)",
+      "WebFetch(domain:www.shinkim.com)",
+      "WebFetch(domain:www.korea.kr)",
+      "WebFetch(domain:ceur-ws.org)",
+      "WebFetch(domain:www.lawtimes.co.kr)"
+    ]
+  }
+}

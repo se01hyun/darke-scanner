@@ -1,11 +1,25 @@
 // Phase 1 MVP — DOM Scanner
-// 공정위 기준 1(False Urgency), 2(Scarcity), 5·11(Basket Sneaking / Preselection) 구현
+// 공정위 기준 17(시간제한 알림), 18(낮은 재고 알림), 3·10(몰래 장바구니 추가 / 특정옵션의 사전선택) 구현
+// Phase 5 — 기준 9(잘못된 계층구조 / 취소 버튼 시각적 약화) 추가
 
 import type { DarkPatternDetection } from '../types';
 import { generateId } from '../utils/id';
-import { getElementInfo } from '../utils/element';
+import { getElementInfo, getContrastRatio } from '../utils/element';
 import domSelectors from '../../rules/dom-selectors.json';
 import fomoKeywords from '../../rules/fomo-keywords.json';
+
+// ─── 가이드라인 12: 취소 버튼 시각적 약화 상수 ──────────────────────────────
+// 텍스트에 포함된 단어로 버튼 역할을 분류
+const ACCEPT_KEYWORDS = ['동의', '확인', '구매', '결제', '신청', '시작', '계속', '주문', '구독', '동의하기', '확인하기'];
+const CANCEL_KEYWORDS = ['취소', '거절', '아니요', '아니오', '닫기', '나중에', '건너뛰기', '거부', '뒤로'];
+
+// WCAG AA 기준(4.5:1) 미만이면 가독성 부족; 3.0:1 미만은 매우 낮음
+const CONTRAST_WEAK_THRESHOLD    = 3.0;
+const CONTRAST_ACCEPT_THRESHOLD  = 4.5;
+// 취소 버튼 폰트가 동의 버튼 대비 이 비율 미만이면 약화 신호
+const FONT_RATIO_THRESHOLD = 0.85;
+// 불투명도가 이 값 미만이면 약화 신호
+const OPACITY_THRESHOLD = 0.70;
 
 // hh:mm 또는 hh:mm:ss 형태의 카운트다운 텍스트 패턴
 const COUNTDOWN_TEXT_RE = /\d{1,2}:\d{2}(:\d{2})?/;
@@ -28,11 +42,12 @@ export class DOMScanner {
       ...this.detectCountdown(),
       ...this.detectStockWarning(),
       ...this.detectPreselectedOptions(),
+      ...this.detectVisuallyWeakenedCancel(),
     ];
     this.sendToBackground(detections);
   }
 
-  // ─── 공정위 기준 1번: 잘못된 긴급성 (False Urgency) ─────────────────────────
+  // ─── 공정위 기준 17번: 시간제한 알림 (False Urgency) ────────────────────────
   private detectCountdown(): DarkPatternDetection[] {
     const detections: DarkPatternDetection[] = [];
     const seen = new Set<Element>();
@@ -47,8 +62,8 @@ export class DOMScanner {
 
         detections.push({
           id: generateId(),
-          guideline: 1,
-          guidelineName: '잘못된 긴급성',
+          guideline: 17,
+          guidelineName: '시간제한 알림',
           severity: 'medium',
           // 시간 패턴(00:05)까지 있으면 confirmed, 선택자만 매칭이면 suspicious
           confidence: hasTimePattern ? 'confirmed' : 'suspicious',
@@ -67,7 +82,7 @@ export class DOMScanner {
     return detections;
   }
 
-  // ─── 공정위 기준 2번: 희소성 과장 (Scarcity) ────────────────────────────────
+  // ─── 공정위 기준 18번: 낮은 재고 알림 (Scarcity) ───────────────────────────
   private detectStockWarning(): DarkPatternDetection[] {
     const detections: DarkPatternDetection[] = [];
     const seen = new Set<Element>();
@@ -85,8 +100,8 @@ export class DOMScanner {
 
         detections.push({
           id: generateId(),
-          guideline: 2,
-          guidelineName: '희소성 과장',
+          guideline: 18,
+          guidelineName: '낮은 재고 알림',
           severity: 'medium',
           confidence: matched ? 'confirmed' : 'suspicious',
           module: 'dom',
@@ -121,8 +136,8 @@ export class DOMScanner {
 
       detections.push({
         id: generateId(),
-        guideline: 2,
-        guidelineName: '희소성 과장',
+        guideline: 18,
+        guidelineName: '낮은 재고 알림',
         severity: 'low',
         confidence: 'suspicious',
         module: 'dom',
@@ -139,7 +154,7 @@ export class DOMScanner {
     return detections;
   }
 
-  // ─── 공정위 기준 5·11번: 바구니 담기 / 기본값 조작 ─────────────────────────
+  // ─── 공정위 기준 3·10번: 몰래 장바구니 추가 / 특정옵션의 사전선택 ────────────
   private detectPreselectedOptions(): DarkPatternDetection[] {
     const detections: DarkPatternDetection[] = [];
 
@@ -161,8 +176,8 @@ export class DOMScanner {
 
         detections.push({
           id: generateId(),
-          guideline: isSneaking ? 5 : 11,
-          guidelineName: isSneaking ? '바구니 담기' : '기본값 조작',
+          guideline: isSneaking ? 3 : 10,
+          guidelineName: isSneaking ? '몰래 장바구니 추가' : '특정옵션의 사전선택',
           severity: isSneaking ? 'high' : 'medium',
           confidence: isSneaking ? 'confirmed' : 'suspicious',
           module: 'dom',
@@ -178,6 +193,120 @@ export class DOMScanner {
     }
 
     return detections;
+  }
+
+  // ─── 공정위 기준 9번: 잘못된 계층구조 (취소 버튼 시각적 약화) ──────────────
+  private detectVisuallyWeakenedCancel(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+
+    // 버튼 역할을 할 수 있는 모든 요소 수집
+    const allButtons = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]',
+      ),
+    );
+
+    const acceptButtons: HTMLElement[] = [];
+    const cancelButtons: HTMLElement[] = [];
+
+    for (const btn of allButtons) {
+      const text = (btn.textContent ?? '').trim();
+      if (ACCEPT_KEYWORDS.some((kw) => text.includes(kw))) acceptButtons.push(btn);
+      else if (CANCEL_KEYWORDS.some((kw) => text.includes(kw))) cancelButtons.push(btn);
+    }
+
+    for (const cancelBtn of cancelButtons) {
+      const acceptBtn = this.findNearbyButton(cancelBtn, acceptButtons);
+      if (!acceptBtn) continue;
+
+      const cancelContrast = getContrastRatio(cancelBtn);
+      const acceptContrast = getContrastRatio(acceptBtn);
+      const cancelFontSize = parseFloat(getComputedStyle(cancelBtn).fontSize);
+      const acceptFontSize = parseFloat(getComputedStyle(acceptBtn).fontSize);
+      const cancelOpacity  = parseFloat(getComputedStyle(cancelBtn).opacity);
+
+      // 각 신호를 독립적으로 평가
+      const signals: string[] = [];
+
+      if (cancelContrast < CONTRAST_WEAK_THRESHOLD && acceptContrast >= CONTRAST_ACCEPT_THRESHOLD) {
+        signals.push(
+          `대비율: 취소(${cancelContrast.toFixed(1)}:1) vs 동의(${acceptContrast.toFixed(1)}:1)`,
+        );
+      }
+      if (acceptFontSize > 0 && cancelFontSize < acceptFontSize * FONT_RATIO_THRESHOLD) {
+        signals.push(
+          `글자 크기: 취소(${cancelFontSize}px) < 동의(${acceptFontSize}px)`,
+        );
+      }
+      if (cancelOpacity < OPACITY_THRESHOLD) {
+        signals.push(`불투명도: 취소 버튼 ${(cancelOpacity * 100).toFixed(0)}%`);
+      }
+
+      if (signals.length === 0) continue;
+
+      detections.push({
+        id: generateId(),
+        guideline: 9,
+        guidelineName: '잘못된 계층구조',
+        // 두 가지 이상 신호가 겹치면 medium, 하나면 low
+        severity: signals.length >= 2 ? 'medium' : 'low',
+        confidence: 'suspicious',
+        module: 'dom',
+        description:
+          '취소/거절 버튼이 동의/확인 버튼에 비해 시각적으로 약화되어 있어 사용자 선택을 유도할 가능성이 있습니다.',
+        evidence: {
+          type: 'dom_element',
+          raw: cancelBtn.outerHTML.slice(0, 300),
+          detail: {
+            signals,
+            cancelText: (cancelBtn.textContent ?? '').trim().slice(0, 50),
+            acceptText: (acceptBtn.textContent ?? '').trim().slice(0, 50),
+            cancelContrast: parseFloat(cancelContrast.toFixed(2)),
+            acceptContrast: parseFloat(acceptContrast.toFixed(2)),
+            cancelFontSize,
+            acceptFontSize,
+            cancelOpacity,
+          },
+        },
+        element: getElementInfo(cancelBtn),
+      });
+    }
+
+    return detections;
+  }
+
+  /**
+   * target 버튼 근처에 있는 후보 버튼을 반환.
+   * 1) 공통 조상 컨테이너(최대 5단계) 내 동일 그룹 탐색
+   * 2) 없으면 뷰포트 거리 300px 이내 최근접 버튼
+   */
+  private findNearbyButton(target: HTMLElement, candidates: HTMLElement[]): HTMLElement | null {
+    // 1) 공통 조상 탐색
+    let ancestor: HTMLElement | null = target.parentElement;
+    for (let depth = 0; depth < 5 && ancestor; depth++) {
+      for (const candidate of candidates) {
+        if (ancestor.contains(candidate)) return candidate;
+      }
+      ancestor = ancestor.parentElement;
+    }
+
+    // 2) 뷰포트 좌표 기반 최근접 탐색
+    const targetRect = target.getBoundingClientRect();
+    let closest: HTMLElement | null = null;
+    let minDist = Infinity;
+
+    for (const candidate of candidates) {
+      const rect = candidate.getBoundingClientRect();
+      const dx = targetRect.left - rect.left;
+      const dy = targetRect.top - rect.top;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < minDist && dist <= 300) {
+        minDist = dist;
+        closest = candidate;
+      }
+    }
+
+    return closest;
   }
 
   // input과 연결된 label 텍스트 추출

@@ -1,7 +1,7 @@
 /**
  * Network Sniffer — Background Service Worker
  * content script로부터 수신한 네트워크 응답과 JS 패턴을 분석하여
- * 공정위 기준 3번(Social Proof), 1·2번 조작 로직(클라이언트 난수 조작)을 탐지한다.
+ * 공정위 기준 19번(다른 소비자의 활동 알림), 17번 조작 로직(클라이언트 난수 조작)을 탐지한다.
  */
 
 import type {
@@ -45,8 +45,8 @@ export class NetworkSniffer {
 
     return {
       id: generateId(),
-      guideline: isTimerReset ? 1 : 3,
-      guidelineName: isTimerReset ? '잘못된 긴급성' : '사회적 증거 조작',
+      guideline: isTimerReset ? 17 : 19,
+      guidelineName: isTimerReset ? '시간제한 알림' : '다른 소비자의 활동 알림',
       severity: 'high',
       confidence: 'confirmed',
       module: 'network',
@@ -74,8 +74,8 @@ export class NetworkSniffer {
 
     return {
       id: generateId(),
-      guideline: 3,
-      guidelineName: '사회적 증거 조작',
+      guideline: 19,
+      guidelineName: '다른 소비자의 활동 알림',
       severity: 'medium',
       confidence: 'suspicious',
       module: 'network',

@@ -3,8 +3,8 @@
 // Pass 2: 압박 지수 계산 + 리뷰 유사도 분석 (Pass 1 히트 시에만)
 //
 // 탐지 대상:
-//   Guideline 14 — 감정적 조작 (Confirmshaming)
-//   Guideline 15 — 가짜 리뷰 (Fake Reviews)
+//   Guideline 16 — 감정적 언어사용 (Confirmshaming)
+//   Guideline  5 — 거짓추천 (Fake Reviews)
 
 import { KeywordMatcher } from './keyword-matcher';
 import { calcPressureScore } from './pressure-scorer';
@@ -60,8 +60,8 @@ export class NLPAnalyzer {
       if (pressureScore >= PRESSURE_SCORE_SUSPICIOUS) {
         detections.push({
           id: generateId(),
-          guideline: 14,
-          guidelineName: '감정적 조작 (Confirmshaming)',
+          guideline: 16,
+          guidelineName: '감정적 언어사용',
           severity: pressureScore >= PRESSURE_SCORE_CONFIRMED ? 'high' : 'medium',
           confidence: pressureScore >= PRESSURE_SCORE_CONFIRMED ? 'confirmed' : 'suspicious',
           module: 'nlp',
@@ -81,8 +81,8 @@ export class NLPAnalyzer {
       for (const cluster of clusters) {
         detections.push({
           id: generateId(),
-          guideline: 15,
-          guidelineName: '가짜 리뷰 (Fake Reviews)',
+          guideline: 5,
+          guidelineName: '거짓추천',
           severity: 'high',
           confidence: cluster.avgSimilarity >= 0.95 ? 'confirmed' : 'suspicious',
           module: 'nlp',
@@ -109,8 +109,8 @@ export class NLPAnalyzer {
         if (pat.test(text)) {
           return {
             id: generateId(),
-            guideline: 14,
-            guidelineName: '감정적 조작 (Confirmshaming)',
+            guideline: 16,
+            guidelineName: '감정적 언어사용',
             severity: 'high',
             confidence: 'confirmed',
             module: 'nlp',
