@@ -144,7 +144,43 @@ function renderDetections(result: DetectionResult): DocumentFragment {
     frag.appendChild(renderCard(d));
   }
 
+  frag.appendChild(renderExportButton(result));
+
   return frag;
+}
+
+// ── JSON 내보내기 ──────────────────────────────────────────────────────────────
+
+function downloadJson(result: DetectionResult): void {
+  const json = JSON.stringify(result, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const ts = new Date(result.scanTimestamp)
+    .toISOString()
+    .replace(/[:.]/g, '-')
+    .slice(0, 19);
+  let domain = '';
+  try { domain = new URL(result.pageUrl).hostname + '-'; } catch { /* pageUrl 없는 경우 */ }
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `dark-scanner-${domain}${ts}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderExportButton(result: DetectionResult): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'export-row';
+
+  const btn = document.createElement('button');
+  btn.className = 'export-btn';
+  btn.textContent = '결과 내보내기 (JSON)';
+  btn.addEventListener('click', () => downloadJson(result));
+
+  wrap.appendChild(btn);
+  return wrap;
 }
 
 // ── 점수 바 애니메이션 ────────────────────────────────────────────────────────
