@@ -324,7 +324,7 @@ interface NLPAnalysisResult {
 | **Phase 2** ✅ | Network Sniffer 구현 | 가짜 실시간 데이터 판별 기능 |
 | **Phase 3** ✅ | NLP Analyzer 통합 | FOMO 지수 + 가짜 리뷰 탐지, KoELECTRA ONNX 인프라 |
 | **Phase 4** ✅ | Report UI 완성 | 오버레이, 팝업, 배지, 가짜 리뷰 클러스터 시각화(UI-06) |
-| **Phase 5** | QA + 공정위 기준 19가지 전체 커버리지 검증 | 탐지율·오탐율 측정 보고서 |
+| **Phase 5** 🔄 | QA + 공정위 기준 19가지 전체 커버리지 검증 | 탐지율·오탐율 측정 보고서 (진행 중 — 기준 2·6·10·19 오탐 수정 완료) |
 | **Phase 6** | Chrome Web Store 배포 준비 | 스토어 등록, 개인정보처리방침 작성 |
 
 ---

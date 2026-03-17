@@ -47,6 +47,8 @@ dark-scanner/
 - `DOMContentLoaded` 시 전체 스캔, 이후 `MutationObserver`로 동적 변경 감지.
 - SPA 대응: `history.pushState` / `popstate` 이벤트 감지 후 재스캔 트리거.
 - 탐지 결과는 `DarkPatternDetection` 인터페이스로 직렬화하여 Background로 전달.
+- **텍스트 노드 순회(`makeTextWalker`):** 모든 TreeWalker는 반드시 `makeTextWalker()` 헬퍼를 사용한다. `SCRIPT` / `STYLE` / `NOSCRIPT` / `TEMPLATE` 내부 텍스트를 NodeFilter 단계에서 거부하여 Next.js 번들 등 비가시 텍스트 오탐을 방지한다. TreeWalker를 직접 생성하는 것은 금지한다.
+- **입력 요소 가시성 체크:** 사전선택(기준 3·10) 탐지 시 `getBoundingClientRect()`로 `width === 0 && height === 0`인 요소를 건너뛴다. 렌더링되지 않은 숨겨진 라디오·체크박스(템플릿, 비활성 옵션 등)의 오탐을 방지한다.
 - **중복 제거:** `deduplicateOverlapping()`은 두 단계로 중복을 제거한다.
   1. 조상-자손 관계: 동일 가이드라인의 자손 요소는 제거하고 가장 바깥쪽 하나만 유지.
   2. 근접 형제 관계: LCA(최근 공통 조상)가 양쪽으로부터 3단계 이내인 경우(`isCloseRelative`), 렌더 면적이 작은 쪽을 제거. 같은 UI 컴포넌트 안에서 여러 선택자가 겹쳐 발생하는 배지 중복 방지.
@@ -60,11 +62,13 @@ dark-scanner/
 - 원격 규칙셋 fetch 시 JSON 스키마 검증(필드 구조 확인) + 버전/해시 검증을 반드시 수행한다. HTTPS 고정 도메인에서만 fetch하며, 검증 실패 시 로컬 캐시를 유지한다.
 - 모델 파일은 `models/` 디렉터리에 위치하며 총 용량 ≤50MB를 유지한다.
 - **WASM 실행 폴백:** MV3 Service Worker에서 `onnxruntime-web` 실행이 막힐 경우(SharedArrayBuffer 미지원 등) `chrome.offscreen` API를 통한 Offscreen Document로 대체한다.
+- **텐서 피드 생성:** KoELECTRA 입력 텐서(`input_ids`, `attention_mask`, `token_type_ids`) 생성은 `src/nlp/onnx-utils.ts`의 `buildFeeds()`를 사용한다. `onnx-session.ts`와 `offscreen-nlp.ts` 두 컨텍스트에서 공유하며, 중복 구현 금지.
 
 ### Module 3: Network Sniffer (`src/background/`)
 - **1안(기본):** `chrome.webRequest` 응답 로그 비동기 수집 후 화면 수치와 매칭.
 - **2안(고급 모드):** `chrome.debugger` API는 사용자가 명시적으로 활성화할 때만 사용. 기본값은 비활성화.
 - JS 소스 분석(AST 파싱)은 acorn 또는 esprima WASM 빌드를 사용한다.
+- **기준 19 서버 미확인 탐지(`flagUnconfirmedDOMDetection`):** DOM 스캐너가 기준 19 패턴(`guideline === 19 && module === 'dom'`)을 먼저 탐지했을 때만 호출한다. 실시간 수치가 없는 페이지에서 무조건 발화하는 오탐을 방지하기 위해 `background/index.ts`의 `hasDomSocialProof` 가드가 선행 조건이다.
 
 ### Module 4: Report UI (`src/popup/`, `src/overlay/`)
 - 오버레이는 기존 페이지 레이아웃을 절대 깨지 않아야 한다. Shadow DOM을 사용한다.

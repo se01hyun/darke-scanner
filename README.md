@@ -90,7 +90,7 @@
 
 ### 탐지 모듈
 
-**DOM Scanner** — `DOMContentLoaded` 시 전체 스캔, `MutationObserver`로 동적 변경 실시간 감지, SPA 재스캔 지원
+**DOM Scanner** — `DOMContentLoaded` 시 전체 스캔, `MutationObserver`로 동적 변경 실시간 감지, SPA 재스캔 지원. `SCRIPT`/`STYLE` 내부 비가시 텍스트 및 렌더링되지 않은 입력 요소는 자동 제외.
 
 **NLP Analyzer** — Hybrid 2-Pass 방식
 1. 키워드 사전 매칭 (`rules/fomo-keywords.json`) — 히트 없으면 Pass 2 생략
@@ -98,7 +98,7 @@
 
 > KoELECTRA ONNX 모델 통합 완료 (Phase 3). 모델 미탑재 시 키워드 + 규칙 기반으로 자동 폴백.
 
-**Network Sniffer** — `fetch`/`XHR` 인터셉트로 실시간 수치 서버 검증, 결제 단계별 가격 변동 추적
+**Network Sniffer** — `fetch`/`XHR` 인터셉트로 실시간 수치 서버 검증, 결제 단계별 가격 변동 추적. 기준 19 서버 미확인 탐지는 DOM이 소셜 프루프 패턴을 실제 감지한 경우에만 수행.
 
 ---
 
