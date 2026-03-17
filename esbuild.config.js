@@ -1,5 +1,5 @@
 import * as esbuild from 'esbuild';
-import { copyFileSync, mkdirSync, readdirSync } from 'fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { join } from 'path';
 
 const isWatch = process.argv.includes('--watch');
@@ -34,6 +34,32 @@ const copyAssetsPlugin = {
         }
       }
 
+      // offscreen.html → dist/offscreen.html
+      if (existsSync('offscreen.html')) {
+        copyFileSync('offscreen.html', join('dist', 'offscreen.html'));
+      }
+
+      // models/*.onnx → dist/models/*.onnx
+      if (existsSync('models')) {
+        mkdirSync(join('dist', 'models'), { recursive: true });
+        for (const f of readdirSync('models')) {
+          if (f.endsWith('.onnx')) {
+            copyFileSync(join('models', f), join('dist', 'models', f));
+          }
+        }
+      }
+
+      // onnxruntime-web WASM 파일 → dist/ 루트
+      // ort.env.wasm.wasmPaths 가 dist/ 루트를 기준으로 설정된다.
+      const ortWasmDir = join('node_modules', 'onnxruntime-web', 'dist');
+      if (existsSync(ortWasmDir)) {
+        for (const f of readdirSync(ortWasmDir)) {
+          if (f.endsWith('.wasm')) {
+            copyFileSync(join(ortWasmDir, f), join('dist', f));
+          }
+        }
+      }
+
       if (!isWatch) {
         console.log('Assets copied to dist/.');
       }
@@ -61,11 +87,12 @@ const baseConfig = {
 };
 
 const entryPoints = [
-  { in: 'src/content/index.ts',            out: 'content'           },
-  { in: 'src/background/index.ts',         out: 'background'        },
-  { in: 'src/popup/index.ts',              out: 'popup'             },
-  { in: 'src/overlay/index.ts',            out: 'overlay'           },
-  { in: 'src/content/page-interceptor.ts', out: 'page-interceptor'  },
+  { in: 'src/content/index.ts',                out: 'content'           },
+  { in: 'src/background/index.ts',             out: 'background'        },
+  { in: 'src/popup/index.ts',                  out: 'popup'             },
+  { in: 'src/overlay/index.ts',                out: 'overlay'           },
+  { in: 'src/content/page-interceptor.ts',     out: 'page-interceptor'  },
+  { in: 'src/background/offscreen-nlp.ts',     out: 'offscreen'         },
 ];
 
 if (isWatch) {

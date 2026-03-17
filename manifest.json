@@ -3,7 +3,7 @@
   "name": "Dark-Scanner",
   "version": "1.0.0",
   "description": "공정거래위원회 가이드라인 기반 다크 패턴 탐지 확장 프로그램",
-  "permissions": ["storage", "tabs", "webRequest"],
+  "permissions": ["storage", "tabs", "webRequest", "offscreen"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
@@ -34,7 +34,11 @@
         "page-interceptor.js",
         "dark-patterns.json",
         "dom-selectors.json",
-        "fomo-keywords.json"
+        "fomo-keywords.json",
+        "models/koelectra-fomo.onnx",
+        "ort-wasm-simd-threaded.wasm",
+        "ort-wasm-simd-threaded.asyncify.wasm",
+        "ort-wasm-simd-threaded.jsep.wasm"
       ],
       "matches": ["<all_urls>"]
     }

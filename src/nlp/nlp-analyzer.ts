@@ -9,7 +9,9 @@
 import { KeywordMatcher } from './keyword-matcher';
 import { calcPressureScore } from './pressure-scorer';
 import { analyzeReviews } from './review-analyzer';
-import type { DarkPatternDetection, NLPTextsPayload } from '../types';
+import { OnnxSession } from './onnx-session';
+import { cosineSim } from './tokenizer';
+import type { DarkPatternDetection, NLPTextsPayload, ReviewCluster } from '../types';
 import { generateId } from '../utils/id';
 import { logger } from '../utils/debug-logger';
 
@@ -58,42 +60,32 @@ const PRESSURE_SCORE_CONFIRMED = 60;
 
 export class NLPAnalyzer {
   private readonly matcher = new KeywordMatcher();
+  private readonly onnx    = new OnnxSession();
   private initialized = false;
+
   /** ONNX 모델이 로드됐을 때만 true. false면 키워드+규칙 기반 분석만 수행한다. */
-  private modelReady = false;
+  get modelReady(): boolean { return this.onnx.isReady; }
 
   async init(): Promise<void> {
     await this.matcher.init();
     this.initialized = true;
 
-    // ONNX 모델 로드 시도 — 실패 시 키워드 전용 모드(현재 구현)로 안전하게 폴백한다.
-    // models/ 파일이 없거나, MV3 Service Worker에서 WASM이 막힌 환경을 모두 처리한다.
+    // ONNX 모델 로드 시도.
+    // models/koelectra-fomo.onnx 파일이 없거나 WASM이 막힌 경우 → keyword-only 폴백.
     try {
-      await this.loadModel();
-      this.modelReady = true;
-    } catch {
-      // 모델 없음 또는 WASM 미지원 — keyword-only 모드로 계속 진행
-      this.modelReady = false;
+      const modelUrl = chrome.runtime.getURL('models/koelectra-fomo.onnx');
+      await this.onnx.load(modelUrl);
+      logger.log('NLP', 'ONNX 세션 초기화 완료');
+    } catch (e) {
+      logger.warn('NLP', `ONNX 로드 실패 — keyword-only 모드로 진행: ${String(e)}`);
     }
-  }
-
-  /**
-   * ONNX 모델 파일 존재 여부를 확인한다.
-   * 실제 InferenceSession 생성은 Phase 3에서 구현한다.
-   *
-   * @throws 파일이 없거나 fetch 실패 시 예외를 던진다.
-   */
-  private async loadModel(): Promise<void> {
-    const modelUrl = chrome.runtime.getURL('models/koelectra-fomo.onnx');
-    const resp = await fetch(modelUrl, { method: 'HEAD' });
-    if (!resp.ok) throw new Error(`model not found: ${resp.status}`);
-    // TODO(Phase 3): ort.InferenceSession.create(modelUrl) 로 실제 추론 세션 초기화
   }
 
   async analyze(payload: NLPTextsPayload): Promise<DarkPatternDetection[]> {
     if (!this.initialized) await this.init();
 
-    logger.group(`NLP 분석 — 모델=${this.modelReady ? 'ONNX' : 'keyword-only'}`);
+    const mode = this.modelReady ? 'ONNX' : 'keyword-only';
+    logger.group(`NLP 분석 — 모델=${mode}`);
     const detections: DarkPatternDetection[] = [];
 
     // ── 가이드라인 8: 속임수 질문 (CTA + 페이지 텍스트 전체) ─────────────
@@ -125,8 +117,22 @@ export class NLPAnalyzer {
 
     // 키워드 히트가 없으면 Pass 2 생략 (성능 최적화)
     if (fomoHits.length > 0) {
-      // ── Pass 2: 심리적 압박 지수 계산 ───────────────────────────────────
-      const pressureScore = calcPressureScore(allPageText, fomoHits);
+      // ── Pass 2: 심리적 압박 지수 계산 (ONNX 우선, 없으면 규칙 기반) ────
+      let pressureScore: number;
+      if (this.modelReady) {
+        try {
+          // ONNX 압박 분류: 페이지 텍스트 최대 128자 슬라이스로 추론
+          pressureScore = await this.onnx.pressureScore(allPageText.slice(0, 512));
+          logger.log('NLP:Pass2', `ONNX 압박 지수 ${pressureScore}점`);
+        } catch {
+          pressureScore = calcPressureScore(allPageText, fomoHits);
+          logger.warn('NLP:Pass2', `ONNX 추론 실패 — 규칙 기반 폴백 ${pressureScore}점`);
+        }
+      } else {
+        pressureScore = calcPressureScore(allPageText, fomoHits);
+        logger.log('NLP:Pass2', `규칙 기반 압박 지수 ${pressureScore}점`);
+      }
+
       logger.log('NLP:Pass2', `압박 지수 ${pressureScore}점 (suspicious≥${PRESSURE_SCORE_SUSPICIOUS} confirmed≥${PRESSURE_SCORE_CONFIRMED})`);
 
       if (pressureScore >= PRESSURE_SCORE_SUSPICIOUS) {
@@ -137,11 +143,11 @@ export class NLPAnalyzer {
           severity: pressureScore >= PRESSURE_SCORE_CONFIRMED ? 'high' : 'medium',
           confidence: pressureScore >= PRESSURE_SCORE_CONFIRMED ? 'confirmed' : 'suspicious',
           module: 'nlp',
-          description: `페이지 텍스트에서 심리적 압박 지수 ${pressureScore}점이 탐지되었습니다. (FOMO 키워드: ${fomoHits.slice(0, 3).join(', ')})`,
+          description: `페이지 텍스트에서 심리적 압박 지수 ${pressureScore}점이 탐지되었습니다. (FOMO 키워드: ${fomoHits.slice(0, 3).join(', ')}) [분석: ${mode}]`,
           evidence: {
             type: 'text_analysis',
             raw: fomoHits.join(', '),
-            detail: { pressureScore, fomoKeywords: fomoHits },
+            detail: { pressureScore, fomoKeywords: fomoHits, mode },
           },
         });
       }
@@ -149,10 +155,13 @@ export class NLPAnalyzer {
 
     logger.groupEnd();
 
-    // ── Pass 2: 가짜 리뷰 탐지 ──────────────────────────────────────────
-    logger.log('NLP:리뷰', `${payload.reviewTexts.length}건 리뷰 유사도 분석`);
+    // ── Pass 2: 가짜 리뷰 탐지 (ONNX 시맨틱 유사도 우선, 없으면 TF-IDF) ─
+    logger.log('NLP:리뷰', `${payload.reviewTexts.length}건 리뷰 유사도 분석 [${mode}]`);
     if (payload.reviewTexts.length >= 2) {
-      const clusters = analyzeReviews(payload.reviewTexts);
+      const clusters = this.modelReady
+        ? await this.semanticReviewClusters(payload.reviewTexts)
+        : analyzeReviews(payload.reviewTexts);
+
       logger.log('NLP:리뷰', `유사 클러스터 ${clusters.length}개 발견`);
       for (const cluster of clusters) {
         logger.log('NLP:리뷰', `클러스터 ${cluster.reviews.length}건, 평균 유사도 ${(cluster.avgSimilarity * 100).toFixed(1)}%`);
@@ -163,7 +172,7 @@ export class NLPAnalyzer {
           severity: 'high',
           confidence: cluster.avgSimilarity >= 0.95 ? 'confirmed' : 'suspicious',
           module: 'nlp',
-          description: `${cluster.reviews.length}개의 리뷰가 평균 ${Math.round(cluster.avgSimilarity * 100)}% 유사한 패턴을 보입니다.`,
+          description: `${cluster.reviews.length}개의 리뷰가 평균 ${Math.round(cluster.avgSimilarity * 100)}% 유사한 패턴을 보입니다. [분석: ${mode}]`,
           evidence: {
             type: 'text_analysis',
             raw: cluster.reviews[0] ?? '',
@@ -171,6 +180,7 @@ export class NLPAnalyzer {
               clusterSize: cluster.reviews.length,
               avgSimilarity: cluster.avgSimilarity,
               sampleReviews: cluster.reviews.slice(0, 3),
+              mode,
             },
           },
         });
@@ -178,6 +188,53 @@ export class NLPAnalyzer {
     }
 
     return detections;
+  }
+
+  /**
+   * ONNX 임베딩 기반 시맨틱 리뷰 클러스터링.
+   * TF-IDF와 달리 표현이 다른 복제 리뷰도 의미적 유사도로 탐지한다.
+   */
+  private async semanticReviewClusters(reviews: string[]): Promise<ReviewCluster[]> {
+    const THRESHOLD = 0.85;
+    let simMatrix: number[][];
+    try {
+      simMatrix = await this.onnx.semanticSimilarityMatrix(reviews);
+    } catch {
+      // ONNX 추론 실패 → TF-IDF 폴백
+      return analyzeReviews(reviews);
+    }
+
+    const clusters: ReviewCluster[] = [];
+    const assigned = new Set<number>();
+
+    for (let i = 0; i < reviews.length; i++) {
+      if (assigned.has(i)) continue;
+
+      const group: number[]  = [i];
+      const sims:  number[]  = [];
+
+      for (let j = i + 1; j < reviews.length; j++) {
+        if (assigned.has(j)) continue;
+        const sim = simMatrix[i][j];
+        if (sim >= THRESHOLD) {
+          group.push(j);
+          sims.push(sim);
+          assigned.add(j);
+        }
+      }
+
+      if (group.length > 1) {
+        assigned.add(i);
+        const avg = sims.reduce((a, b) => a + b, 0) / sims.length;
+        clusters.push({
+          reviews:       group.map((idx) => reviews[idx]),
+          avgSimilarity: Math.round(avg * 1000) / 1000,
+          isSuspicious:  true,
+        });
+      }
+    }
+
+    return clusters;
   }
 
   // ── 가이드라인 8: 속임수 질문 (Trick Questions) ──────────────────────────────

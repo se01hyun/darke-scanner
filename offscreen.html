@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Dark-Scanner Offscreen</title>
+</head>
+<body>
+  <!-- ONNX WASM 추론을 위한 Offscreen Document -->
+  <!-- chrome.offscreen API (Chrome 116+) 를 통해 Service Worker가 직접 실행할 수 없는
+       WASM / SharedArrayBuffer 의존 연산을 이 페이지에서 대신 실행한다. -->
+  <script src="offscreen.js"></script>
+</body>
+</html>
