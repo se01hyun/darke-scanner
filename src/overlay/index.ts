@@ -1,7 +1,7 @@
 // Module 4: Page Overlay — Shadow DOM 기반 하이라이트 + 툴팁
 // 원본 페이지 스타일과 격리하기 위해 Shadow DOM(mode: 'closed')을 사용한다.
 
-import type { DarkPatternDetection, MessageType, BoundingRect, HighlightEntry } from '../types';
+import type { DarkPatternDetection, MessageType, HighlightEntry } from '../types';
 import { escHtml } from '../utils/html';
 import { SEVERITY_KO, MODULE_KO } from '../utils/display';
 

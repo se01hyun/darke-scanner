@@ -180,6 +180,12 @@ export class DOMScanner {
   private observer: MutationObserver | null = null;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** clearTimeout + setTimeout 쌍을 하나의 호출로 줄이는 내부 헬퍼 */
+  private debounceRescan(ms: number): void {
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => this.scan(), ms);
+  }
+
   init(): void {
     this.scan();
     this.watchDynamicChanges();
@@ -1463,10 +1469,7 @@ export class DOMScanner {
 
     const originalSet = desc.set;
     const originalGet = desc.get;
-    const triggerRescan = () => {
-      if (this.debounceTimer) clearTimeout(this.debounceTimer);
-      this.debounceTimer = setTimeout(() => this.scan(), 300);
-    };
+    const triggerRescan = () => this.debounceRescan(300);
 
     Object.defineProperty(HTMLInputElement.prototype, 'checked', {
       set(this: HTMLInputElement, value: boolean) {
@@ -1485,14 +1488,12 @@ export class DOMScanner {
   private watchDynamicChanges(): void {
     this.observer = new MutationObserver((mutations) => {
       // 연속 DOM 변경을 debounce하여 과도한 재스캔 방지
-      if (this.debounceTimer) clearTimeout(this.debounceTimer);
-
       const reason = mutations.some((m) => m.type === 'attributes')
         ? 'attribute 변경'
         : '자식 노드 추가/삭제';
       logger.log('MutationObserver', `재스캔 예약 (${reason})`);
 
-      this.debounceTimer = setTimeout(() => this.scan(), 500);
+      this.debounceRescan(500);
     });
     this.observer.observe(document.body, {
       childList: true,

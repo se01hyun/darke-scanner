@@ -1,4 +1,4 @@
-import type { DetectionResult, DarkPatternDetection, ReviewCluster } from '../types';
+import type { DetectionResult, DarkPatternDetection, ReviewCluster, Severity, Confidence } from '../types';
 import { escHtml } from '../utils/html';
 import { SEVERITY_KO, CONFIDENCE_KO, MODULE_KO } from '../utils/display';
 
@@ -194,9 +194,10 @@ function renderDetections(result: DetectionResult, tabId: number): DocumentFragm
 
   // severity 내림차순 (high → medium → low), 같으면 confirmed 우선
   const sorted = [...result.detections].sort((a, b) => {
-    const sv = { high: 2, medium: 1, low: 0 };
-    const cv = { confirmed: 1, suspicious: 0 };
-    return (sv[b.severity] - sv[a.severity]) || (cv[b.confidence] - cv[a.confidence]);
+    const severityOrder: Record<Severity, number>    = { high: 2, medium: 1, low: 0 };
+    const confidenceOrder: Record<Confidence, number> = { confirmed: 1, suspicious: 0 };
+    return (severityOrder[b.severity] - severityOrder[a.severity]) ||
+           (confidenceOrder[b.confidence] - confidenceOrder[a.confidence]);
   });
 
   for (const d of sorted) {
