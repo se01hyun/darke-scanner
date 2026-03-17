@@ -140,7 +140,27 @@ npm run build:prod
 | `npm run clean` | `dist/` 삭제 |
 | `npm run rebuild` | clean + 개발 빌드 |
 | `npm run rebuild:prod` | clean + 프로덕션 빌드 |
-| `npm run typecheck` | TypeScript 타입 검사 |
+| `npm run typecheck` | TypeScript 타입 검사 (소스) |
+| `npm run typecheck:test` | TypeScript 타입 검사 (테스트 포함) |
+| `npm run test` | 단위 테스트 1회 실행 |
+| `npm run test:watch` | 파일 변경 감지 테스트 (개발 중) |
+| `npm run test:coverage` | 테스트 커버리지 리포트 생성 |
+
+---
+
+## 테스트
+
+Vitest + jsdom 기반 단위 테스트 스위트가 포함되어 있습니다.
+
+| 파일 | 테스트 수 | 대상 |
+|------|----------|------|
+| `tests/unit/dom-scanner.test.ts` | 108건 | DOM 탐지 메서드 15종 |
+| `tests/unit/rule-engine.test.ts` | 10건 | 위험 점수 계산 |
+| `tests/unit/network-sniffer.test.ts` | 22건 | 네트워크 분석 |
+
+- **환경:** jsdom (브라우저 DOM API 시뮬레이션), Chrome Extension API 목
+- **DOM Scanner 커버리지:** 80%+ (Statement 기준)
+- **특이사항:** `getBoundingClientRect()` 가시성 체크, `CSS.escape` 폴리필, `__DS_DEBUG__` 상수 주입 등 브라우저 고유 API 모킹 적용
 
 ---
 
