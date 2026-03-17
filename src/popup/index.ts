@@ -79,6 +79,55 @@ function renderScoreSection(result: DetectionResult): HTMLElement {
   return section;
 }
 
+/**
+ * network 모듈 탐지 결과에 대해 진짜/가짜 여부 판정 배지 HTML을 반환한다 (UI-07).
+ * non-network 탐지면 빈 문자열 반환.
+ */
+function renderNetworkVerdict(d: DarkPatternDetection): string {
+  if (d.module !== 'network') return '';
+
+  const { type, detail } = d.evidence;
+
+  if (type === 'script_pattern') {
+    const patternType = detail['patternType'] as string | undefined;
+    const src = detail['src'] as string | undefined;
+    const srcLabel = src && src !== 'inline'
+      ? escHtml(src.split('/').pop()?.slice(-30) ?? src)
+      : '인라인 스크립트';
+
+    if (patternType === 'timer_reset') {
+      return `<div class="net-verdict net-verdict-fake">
+        <span class="net-verdict-label">타이머 반복 초기화 확인됨</span>
+        <span class="net-verdict-src">${srcLabel}</span>
+      </div>`;
+    }
+    if (patternType === 'random_counter') {
+      return `<div class="net-verdict net-verdict-fake">
+        <span class="net-verdict-label">난수 카운터 조작 확인됨</span>
+        <span class="net-verdict-src">${srcLabel}</span>
+      </div>`;
+    }
+  }
+
+  if (type === 'network_analysis') {
+    const increaseRate = detail['increaseRate'] as number | undefined;
+    const reason = detail['reason'] as string | undefined;
+
+    if (typeof increaseRate === 'number') {
+      return `<div class="net-verdict net-verdict-fake">
+        <span class="net-verdict-label">가격 +${escHtml(increaseRate.toFixed(1))}% 상승 탐지됨</span>
+      </div>`;
+    }
+    if (reason === 'no_server_response_for_tab') {
+      return `<div class="net-verdict net-verdict-unverified">
+        <span class="net-verdict-label">서버 데이터 미확인</span>
+      </div>`;
+    }
+  }
+
+  return '';
+}
+
 function renderCard(d: DarkPatternDetection, tabId: number): HTMLElement {
   const card = document.createElement('div');
   card.className = 'detection-card';
@@ -97,6 +146,8 @@ function renderCard(d: DarkPatternDetection, tabId: number): HTMLElement {
     });
   }
 
+  const networkVerdictHtml = renderNetworkVerdict(d);
+
   card.innerHTML = `
     <div class="card-bar bar-${escHtml(d.severity)}"></div>
     <div class="card-body">
@@ -110,6 +161,7 @@ function renderCard(d: DarkPatternDetection, tabId: number): HTMLElement {
         <span class="chip chip-${escHtml(d.severity)}">심각도 ${escHtml(SEVERITY_KO[d.severity])}</span>
       </div>
       <div class="card-desc">${escHtml(d.description)}</div>
+      ${networkVerdictHtml}
       <div class="card-meta">${escHtml(MODULE_KO[d.module] ?? d.module)} 모듈</div>
     </div>
   `;

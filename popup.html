@@ -261,6 +261,38 @@
       color: var(--muted);
     }
 
+    /* ── 네트워크 판정 배지 (UI-07) ─────────────────────── */
+    .net-verdict {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 5px 0 3px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+    .net-verdict-fake {
+      background: #3a1c28;
+      color: var(--c-high);
+      border-left: 2px solid var(--c-high);
+    }
+    .net-verdict-unverified {
+      background: #3a3020;
+      color: var(--c-suspect);
+      border-left: 2px solid var(--c-suspect);
+    }
+    .net-verdict-src {
+      font-weight: 400;
+      opacity: 0.7;
+      margin-left: auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+
     /* ── JSON 내보내기 ───────────────────────────────────── */
     .export-row {
       padding: 10px 14px 14px;
