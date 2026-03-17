@@ -1,4 +1,4 @@
-import type { DetectionResult, DarkPatternDetection, Severity, Confidence } from '../types';
+import type { DetectionResult, DarkPatternDetection, Severity, Confidence, ReviewCluster } from '../types';
 import { escHtml } from '../utils/html';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
@@ -137,9 +137,66 @@ function renderDetections(result: DetectionResult): DocumentFragment {
     frag.appendChild(renderCard(d));
   }
 
+  if (result.reviewClusters && result.reviewClusters.length > 0) {
+    frag.appendChild(renderReviewClusters(result.reviewClusters));
+  }
+
   frag.appendChild(renderExportButton(result));
 
   return frag;
+}
+
+// ── 리뷰 클러스터 시각화 ─────────────────────────────────────────────────────
+
+function renderReviewClusters(clusters: ReviewCluster[]): HTMLElement {
+  const section = document.createElement('div');
+  section.className = 'cluster-section';
+
+  const header = document.createElement('div');
+  header.className = 'list-header';
+  header.textContent = `가짜 리뷰 의심 클러스터 ${clusters.length}개`;
+  section.appendChild(header);
+
+  clusters.forEach((cluster, idx) => {
+    const card = document.createElement('div');
+    card.className = 'cluster-card';
+
+    const simPct = Math.round(cluster.avgSimilarity * 100);
+    const badge = cluster.avgSimilarity >= 0.95 ? '확정' : '의심';
+    const badgeCls = cluster.avgSimilarity >= 0.95 ? 'chip-confirmed' : 'chip-suspicious';
+
+    card.innerHTML = `
+      <div class="cluster-header">
+        <span class="cluster-idx">클러스터 ${idx + 1}</span>
+        <span class="chip ${escHtml(badgeCls)}">${escHtml(badge)}</span>
+        <span class="cluster-sim">유사도 ${simPct}%</span>
+        <span class="cluster-count">${cluster.reviews.length}건</span>
+      </div>
+      <div class="cluster-sim-bar-track">
+        <div class="cluster-sim-bar-fill" style="width:${simPct}%"></div>
+      </div>
+    `;
+
+    // 리뷰 샘플 (최대 3건)
+    const list = document.createElement('ul');
+    list.className = 'cluster-review-list';
+    cluster.reviews.slice(0, 3).forEach((text) => {
+      const li = document.createElement('li');
+      li.className = 'cluster-review-item';
+      li.textContent = text.length > 80 ? text.slice(0, 80) + '…' : text;
+      list.appendChild(li);
+    });
+    if (cluster.reviews.length > 3) {
+      const more = document.createElement('li');
+      more.className = 'cluster-review-more';
+      more.textContent = `외 ${cluster.reviews.length - 3}건 더 있음`;
+      list.appendChild(more);
+    }
+    card.appendChild(list);
+    section.appendChild(card);
+  });
+
+  return section;
 }
 
 // ── JSON 내보내기 ──────────────────────────────────────────────────────────────

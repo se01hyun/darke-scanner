@@ -11,7 +11,7 @@ import { calcPressureScore } from './pressure-scorer';
 import { analyzeReviews } from './review-analyzer';
 import { OnnxSession } from './onnx-session';
 import { cosineSim } from './tokenizer';
-import type { DarkPatternDetection, NLPTextsPayload, ReviewCluster } from '../types';
+import type { DarkPatternDetection, NLPTextsPayload, ReviewCluster, NLPAnalysisResult } from '../types';
 import { generateId } from '../utils/id';
 import { logger } from '../utils/debug-logger';
 
@@ -81,12 +81,13 @@ export class NLPAnalyzer {
     }
   }
 
-  async analyze(payload: NLPTextsPayload): Promise<DarkPatternDetection[]> {
+  async analyze(payload: NLPTextsPayload): Promise<NLPAnalysisResult> {
     if (!this.initialized) await this.init();
 
     const mode = this.modelReady ? 'ONNX' : 'keyword-only';
     logger.group(`NLP 분석 — 모델=${mode}`);
     const detections: DarkPatternDetection[] = [];
+    let reviewClusters: ReviewCluster[] = [];
 
     // ── 가이드라인 8: 속임수 질문 (CTA + 페이지 텍스트 전체) ─────────────
     const trickDetection = this.detectTrickQuestions(payload.pageTexts, payload.ctaTexts);
@@ -162,6 +163,7 @@ export class NLPAnalyzer {
         ? await this.semanticReviewClusters(payload.reviewTexts)
         : analyzeReviews(payload.reviewTexts);
 
+      reviewClusters = clusters;
       logger.log('NLP:리뷰', `유사 클러스터 ${clusters.length}개 발견`);
       for (const cluster of clusters) {
         logger.log('NLP:리뷰', `클러스터 ${cluster.reviews.length}건, 평균 유사도 ${(cluster.avgSimilarity * 100).toFixed(1)}%`);
@@ -187,7 +189,7 @@ export class NLPAnalyzer {
       }
     }
 
-    return detections;
+    return { detections, reviewClusters };
   }
 
   /**

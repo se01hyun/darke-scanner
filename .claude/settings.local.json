@@ -12,7 +12,8 @@
       "Bash(wc:*)",
       "Bash(ls:*)",
       "Bash(cd:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Skill(update-config)"
     ]
   }
 }

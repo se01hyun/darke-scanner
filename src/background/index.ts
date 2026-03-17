@@ -1,7 +1,7 @@
 import { NetworkSniffer } from './network-sniffer';
 import { RuleEngine } from './rule-engine';
 import { NLPAnalyzer } from '../nlp/nlp-analyzer';
-import type { MessageType, DetectionResult, DarkPatternDetection } from '../types';
+import type { MessageType, DetectionResult, DarkPatternDetection, ReviewCluster } from '../types';
 import { logger } from '../utils/debug-logger';
 
 const ruleEngine = new RuleEngine();
@@ -123,9 +123,9 @@ chrome.runtime.onMessage.addListener(
 
     if (message.type === 'NLP_TEXTS' && tabId !== undefined) {
       logger.log('BG', `NLP_TEXTS 수신 — tabId=${tabId} pageTexts=${message.payload.pageTexts.length} reviews=${message.payload.reviewTexts.length} cta=${message.payload.ctaTexts.length}`);
-      nlpAnalyzer.analyze(message.payload).then(async (nlpDetections) => {
-        logger.log('BG', `NLP 분석 완료 — ${nlpDetections.length}건 탐지`);
-        if (nlpDetections.length === 0) { sendResponse(null); return; }
+      nlpAnalyzer.analyze(message.payload).then(async ({ detections: nlpDetections, reviewClusters }) => {
+        logger.log('BG', `NLP 분석 완료 — ${nlpDetections.length}건 탐지, 클러스터 ${reviewClusters.length}개`);
+        if (nlpDetections.length === 0 && reviewClusters.length === 0) { sendResponse(null); return; }
 
         // 기존 세션 결과와 병합
         const stored = await chrome.storage.session.get(`result:${tabId}`);
@@ -142,6 +142,10 @@ chrome.runtime.onMessage.addListener(
         );
         // scanTimestamp는 최초 스캔 시각 유지
         if (existing) merged.scanTimestamp = existing.scanTimestamp;
+
+        // 리뷰 클러스터: 새로 탐지된 것과 기존 것 중 더 많은 쪽 유지
+        const prevClusters: ReviewCluster[] = existing?.reviewClusters ?? [];
+        merged.reviewClusters = reviewClusters.length > 0 ? reviewClusters : prevClusters;
 
         await chrome.storage.session.set({ [`result:${tabId}`]: merged });
         updateBadge(tabId, merged.detections.length);

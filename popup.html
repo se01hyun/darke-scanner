@@ -265,6 +265,75 @@
       color: var(--text);
     }
 
+    /* ── 리뷰 클러스터 ───────────────────────────────────── */
+    .cluster-section {
+      border-top: 1px solid var(--border);
+    }
+    .cluster-card {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cluster-card:last-child { border-bottom: none; }
+    .cluster-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .cluster-idx {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .cluster-sim {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--subtext);
+    }
+    .cluster-count {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0 5px;
+    }
+    .cluster-sim-bar-track {
+      height: 4px;
+      background: var(--surface);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .cluster-sim-bar-fill {
+      height: 100%;
+      background: var(--c-high);
+      border-radius: 2px;
+    }
+    .cluster-review-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cluster-review-item {
+      font-size: 11px;
+      color: var(--subtext);
+      background: var(--surface2);
+      border-radius: 4px;
+      padding: 4px 8px;
+      line-height: 1.4;
+      word-break: keep-all;
+      border-left: 2px solid var(--border);
+    }
+    .cluster-review-more {
+      font-size: 10px;
+      color: var(--muted);
+      padding: 2px 8px;
+    }
+
     /* ── 푸터 ────────────────────────────────────────────── */
     .footer {
       padding: 8px 14px;

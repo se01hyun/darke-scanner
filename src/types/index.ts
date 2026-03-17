@@ -35,6 +35,7 @@ export interface DetectionResult {
   scanTimestamp: number;
   overallRiskScore: number; // 0~100
   detections: DarkPatternDetection[];
+  reviewClusters?: ReviewCluster[]; // 가짜 리뷰 의심 클러스터 (NLP 분석 결과)
 }
 
 // NLP
@@ -47,6 +48,12 @@ export interface ReviewCluster {
 export interface NLPResult {
   pressureScore: number; // 심리적 압박 지수 0~100
   fomoKeywords: string[];
+  reviewClusters: ReviewCluster[];
+}
+
+// NLPAnalyzer.analyze() 반환 타입
+export interface NLPAnalysisResult {
+  detections: DarkPatternDetection[];
   reviewClusters: ReviewCluster[];
 }
 
