@@ -79,15 +79,31 @@ function renderScoreSection(result: DetectionResult): HTMLElement {
   return section;
 }
 
-function renderCard(d: DarkPatternDetection): HTMLElement {
+function renderCard(d: DarkPatternDetection, tabId: number): HTMLElement {
   const card = document.createElement('div');
   card.className = 'detection-card';
+
+  const xpath = d.element?.xpath;
+  if (xpath) {
+    card.classList.add('card-clickable');
+    card.title = '클릭하면 페이지에서 해당 요소로 이동합니다';
+    card.addEventListener('click', () => {
+      chrome.tabs.sendMessage(tabId, {
+        type: 'SCROLL_TO_ELEMENT',
+        payload: { xpath },
+      }).catch(() => {
+        // 탭이 닫혔거나 content script가 없는 경우 무시
+      });
+    });
+  }
+
   card.innerHTML = `
     <div class="card-bar bar-${escHtml(d.severity)}"></div>
     <div class="card-body">
       <div class="card-top">
         <span class="guideline-num">기준 ${d.guideline}</span>
         <span class="card-name">${escHtml(d.guidelineName)}</span>
+        ${xpath ? '<span class="card-scroll-hint">↗</span>' : ''}
       </div>
       <div class="chips">
         <span class="chip chip-${escHtml(d.confidence)}">${escHtml(CONFIDENCE_KO[d.confidence])}</span>
@@ -100,7 +116,7 @@ function renderCard(d: DarkPatternDetection): HTMLElement {
   return card;
 }
 
-function renderDetections(result: DetectionResult): DocumentFragment {
+function renderDetections(result: DetectionResult, tabId: number): DocumentFragment {
   const frag = document.createDocumentFragment();
 
   frag.appendChild(renderScoreSection(result));
@@ -118,7 +134,7 @@ function renderDetections(result: DetectionResult): DocumentFragment {
   });
 
   for (const d of sorted) {
-    frag.appendChild(renderCard(d));
+    frag.appendChild(renderCard(d, tabId));
   }
 
   if (result.reviewClusters && result.reviewClusters.length > 0) {
@@ -275,6 +291,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  root.appendChild(renderDetections(result));
+  root.appendChild(renderDetections(result, tabId));
   animateScoreBar(result.overallRiskScore);
 });

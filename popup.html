@@ -171,9 +171,26 @@
       padding: 10px 14px;
       border-bottom: 1px solid var(--border);
       cursor: default;
+      transition: background 0.12s;
     }
     .detection-card:last-child { border-bottom: none; }
     .detection-card:hover { background: var(--surface); }
+
+    /* 요소 정보가 있는 카드 — 클릭 가능 */
+    .detection-card.card-clickable { cursor: pointer; }
+    .detection-card.card-clickable:hover { background: #1e2438; }
+    .detection-card.card-clickable:active { background: var(--surface2); }
+
+    /* 스크롤 이동 힌트 아이콘 */
+    .card-scroll-hint {
+      font-size: 10px;
+      color: var(--muted);
+      margin-left: auto;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .detection-card.card-clickable:hover .card-scroll-hint { opacity: 1; }
 
     /* 좌측 severity 색상 바 */
     .card-bar {

@@ -1,5 +1,6 @@
 // DOM에서 NLP 분석용 텍스트 수집
-import type { NLPTextsPayload } from '../types';
+import type { NLPTextsPayload, NLPTextItem } from '../types';
+import { getXPath } from '../utils/element';
 
 const MAX_PAGE_TEXTS = 50;
 const MAX_REVIEW_TEXTS = 100;
@@ -14,7 +15,7 @@ export class TextCollector {
     };
   }
 
-  private collectPageTexts(): string[] {
+  private collectPageTexts(): NLPTextItem[] {
     const selectors = [
       'h1', 'h2', 'h3',
       '[class*="product-name"]', '[class*="item-name"]',
@@ -22,31 +23,33 @@ export class TextCollector {
       '[class*="popup"]', '[class*="modal"]',
       '[class*="sale"]', '[class*="offer"]',
     ];
-    const texts = new Set<string>();
+    const seen = new Map<string, NLPTextItem>(); // text → item (dedup by text)
     for (const sel of selectors) {
       for (const el of document.querySelectorAll(sel)) {
         const t = el.textContent?.trim();
-        if (t && t.length > 5) texts.add(t);
-        if (texts.size >= MAX_PAGE_TEXTS) return [...texts];
+        if (t && t.length > 5 && !seen.has(t)) {
+          seen.set(t, { text: t, xpath: getXPath(el as HTMLElement) });
+        }
+        if (seen.size >= MAX_PAGE_TEXTS) return [...seen.values()];
       }
     }
-    return [...texts];
+    return [...seen.values()];
   }
 
-  private collectReviewTexts(): string[] {
+  private collectReviewTexts(): NLPTextItem[] {
     const selectors = [
       '[class*="review"]', '[class*="comment"]',
       '[class*="후기"]', '[class*="opinion"]',
       '[class*="평가"]', '[itemprop="reviewBody"]',
     ];
-    const candidates: string[] = [];
+    const candidates: NLPTextItem[] = [];
     const seen = new Set<string>();
     for (const sel of selectors) {
       for (const el of document.querySelectorAll(sel)) {
         const t = el.textContent?.trim();
         if (t && t.length > 10 && !seen.has(t)) {
           seen.add(t);
-          candidates.push(t);
+          candidates.push({ text: t, xpath: getXPath(el as HTMLElement) });
         }
         if (candidates.length >= MAX_REVIEW_TEXTS) break;
       }
@@ -56,17 +59,17 @@ export class TextCollector {
     // .review-section, .review-list, .review-card 같은 상위 컨테이너가
     // .review-body의 텍스트를 그대로 포함하므로 개별 리뷰 텍스트만 남긴다.
     return candidates.filter(
-      (t) => !candidates.some((other) => other !== t && t.includes(other)),
+      (item) => !candidates.some((other) => other.text !== item.text && item.text.includes(other.text)),
     );
   }
 
-  private collectCtaTexts(): string[] {
+  private collectCtaTexts(): NLPTextItem[] {
     const selectors = [
       'button', 'input[type="submit"]', 'input[type="button"]',
       'a[class*="btn"]', 'a[class*="button"]',
       '[class*="cta"]', '[role="button"]',
     ];
-    const texts: string[] = [];
+    const items: NLPTextItem[] = [];
     const seen = new Set<string>();
     for (const sel of selectors) {
       for (const el of document.querySelectorAll(sel)) {
@@ -75,11 +78,11 @@ export class TextCollector {
           (el as HTMLInputElement).value?.trim();
         if (t && t.length > 2 && !seen.has(t)) {
           seen.add(t);
-          texts.push(t);
+          items.push({ text: t, xpath: getXPath(el as HTMLElement) });
         }
-        if (texts.length >= MAX_CTA_TEXTS) return texts;
+        if (items.length >= MAX_CTA_TEXTS) return items;
       }
     }
-    return texts;
+    return items;
   }
 }

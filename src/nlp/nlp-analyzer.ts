@@ -10,9 +10,15 @@ import { KeywordMatcher } from './keyword-matcher';
 import { calcPressureScore } from './pressure-scorer';
 import { analyzeReviews } from './review-analyzer';
 import { OnnxSession } from './onnx-session';
-import type { DarkPatternDetection, NLPTextsPayload, ReviewCluster, NLPAnalysisResult } from '../types';
+import type { DarkPatternDetection, ElementInfo, NLPTextItem, NLPTextsPayload, ReviewCluster, NLPAnalysisResult } from '../types';
 import { generateId } from '../utils/id';
 import { logger } from '../utils/debug-logger';
+
+/** NLP 탐지 결과에 붙일 ElementInfo를 xpath만으로 생성한다.
+ *  boundingRect는 빈 값으로 두고, overlay가 xpath로 요소를 동적 조회해 실제 좌표를 사용한다. */
+function makeElementInfo(xpath: string): ElementInfo {
+  return { xpath, boundingRect: { top: 0, left: 0, width: 0, height: 0 }, outerHTML: '' };
+}
 
 // ── 가이드라인 8: 속임수 질문 패턴 (이중부정·혼란 유도 동의/거절 문구) ────────
 // 예: "수신을 원하지 않으시면 체크를 해제해 주세요", "마케팅에 동의하지 않음"
@@ -111,7 +117,8 @@ export class NLPAnalyzer {
     }
 
     // ── Pass 1: 키워드 사전 매칭 ─────────────────────────────────────────
-    const allPageText = [...payload.pageTexts, ...payload.ctaTexts].join(' ');
+    const allPageItems = [...payload.pageTexts, ...payload.ctaTexts];
+    const allPageText = allPageItems.map(i => i.text).join(' ');
     const fomoHits = this.matcher.match(allPageText);
     logger.log('NLP:Pass1', `FOMO 키워드 히트 ${fomoHits.length}건: ${fomoHits.join(', ') || '없음'}`);
 
@@ -136,6 +143,10 @@ export class NLPAnalyzer {
       logger.log('NLP:Pass2', `압박 지수 ${pressureScore}점 (suspicious≥${PRESSURE_SCORE_SUSPICIOUS} confirmed≥${PRESSURE_SCORE_CONFIRMED})`);
 
       if (pressureScore >= PRESSURE_SCORE_SUSPICIOUS) {
+        // FOMO 키워드가 실제로 포함된 첫 번째 텍스트 항목의 xpath를 element로 사용
+        const fomoMatchedItem = allPageItems.find(
+          item => fomoHits.some(hit => item.text.includes(hit)),
+        );
         detections.push({
           id: generateId(),
           guideline: 16,
@@ -149,6 +160,7 @@ export class NLPAnalyzer {
             raw: fomoHits.join(', '),
             detail: { pressureScore, fomoKeywords: fomoHits, mode },
           },
+          ...(fomoMatchedItem ? { element: makeElementInfo(fomoMatchedItem.xpath) } : {}),
         });
       }
     }
@@ -158,14 +170,19 @@ export class NLPAnalyzer {
     // ── Pass 2: 가짜 리뷰 탐지 (ONNX 시맨틱 유사도 우선, 없으면 TF-IDF) ─
     logger.log('NLP:리뷰', `${payload.reviewTexts.length}건 리뷰 유사도 분석 [${mode}]`);
     if (payload.reviewTexts.length >= 2) {
+      const reviewStrings = payload.reviewTexts.map(i => i.text);
       const clusters = this.modelReady
-        ? await this.semanticReviewClusters(payload.reviewTexts)
-        : analyzeReviews(payload.reviewTexts);
+        ? await this.semanticReviewClusters(reviewStrings)
+        : analyzeReviews(reviewStrings);
+
+      // 리뷰 텍스트 → xpath 역조회 맵
+      const reviewXpathMap = new Map(payload.reviewTexts.map(i => [i.text, i.xpath]));
 
       reviewClusters = clusters;
       logger.log('NLP:리뷰', `유사 클러스터 ${clusters.length}개 발견`);
       for (const cluster of clusters) {
         logger.log('NLP:리뷰', `클러스터 ${cluster.reviews.length}건, 평균 유사도 ${(cluster.avgSimilarity * 100).toFixed(1)}%`);
+        const firstXpath = reviewXpathMap.get(cluster.reviews[0] ?? '');
         detections.push({
           id: generateId(),
           guideline: 5,
@@ -184,6 +201,7 @@ export class NLPAnalyzer {
               mode,
             },
           },
+          ...(firstXpath ? { element: makeElementInfo(firstXpath) } : {}),
         });
       }
     }
@@ -241,13 +259,13 @@ export class NLPAnalyzer {
   // ── 가이드라인 8: 속임수 질문 (Trick Questions) ──────────────────────────────
   // 이중부정·혼란 유도 문구로 소비자를 원하지 않는 동의로 유도하는 패턴 탐지
   private detectTrickQuestions(
-    pageTexts: string[],
-    ctaTexts: string[],
+    pageTexts: NLPTextItem[],
+    ctaTexts: NLPTextItem[],
   ): DarkPatternDetection | null {
-    const allTexts = [...ctaTexts, ...pageTexts];
-    for (const text of allTexts) {
+    const allItems = [...ctaTexts, ...pageTexts];
+    for (const item of allItems) {
       for (const pat of TRICK_QUESTION_PATTERNS) {
-        if (pat.test(text)) {
+        if (pat.test(item.text)) {
           return {
             id: generateId(),
             guideline: 8,
@@ -258,9 +276,10 @@ export class NLPAnalyzer {
             description: '이중부정 또는 혼란 유도 문구로 소비자를 원하지 않는 동의로 유도하는 표현이 감지되었습니다.',
             evidence: {
               type: 'text_analysis',
-              raw: text.slice(0, 200),
-              detail: { pattern: pat.source, matchedText: text.slice(0, 100) },
+              raw: item.text.slice(0, 200),
+              detail: { pattern: pat.source, matchedText: item.text.slice(0, 100) },
             },
+            element: makeElementInfo(item.xpath),
           };
         }
       }
@@ -271,16 +290,20 @@ export class NLPAnalyzer {
   // ── 가이드라인 1: 숨은 갱신 (Hidden Renewal) ─────────────────────────────────
   // 자동갱신·자동결제 조건이 본문에 있지만 눈에 띄지 않게 처리된 경우 탐지
   private detectHiddenRenewal(
-    pageTexts: string[],
-    ctaTexts: string[],
+    pageTexts: NLPTextItem[],
+    ctaTexts: NLPTextItem[],
   ): DarkPatternDetection | null {
-    const allText = [...pageTexts, ...ctaTexts].join(' ');
+    const allItems = [...pageTexts, ...ctaTexts];
+    const allText = allItems.map(i => i.text).join(' ');
 
     const matchedKeyword = HIDDEN_RENEWAL_KEYWORDS.find((kw) => allText.includes(kw));
     if (!matchedKeyword) return null;
 
     // 위험 컨텍스트(무료체험·첫달 등)와 함께 등장하면 더 심각한 다크 패턴
     const hasRiskContext = RENEWAL_RISK_CONTEXT.some((kw) => allText.includes(kw));
+
+    // 키워드가 실제로 포함된 텍스트 항목의 xpath를 element로 사용
+    const matchedItem = allItems.find(item => HIDDEN_RENEWAL_KEYWORDS.some(kw => item.text.includes(kw)));
 
     return {
       id: generateId(),
@@ -301,13 +324,14 @@ export class NLPAnalyzer {
           riskContextMatched: RENEWAL_RISK_CONTEXT.filter((kw) => allText.includes(kw)),
         },
       },
+      ...(matchedItem ? { element: makeElementInfo(matchedItem.xpath) } : {}),
     };
   }
 
-  private detectConfirmshaming(ctaTexts: string[]): DarkPatternDetection | null {
-    for (const text of ctaTexts) {
+  private detectConfirmshaming(ctaTexts: NLPTextItem[]): DarkPatternDetection | null {
+    for (const item of ctaTexts) {
       for (const pat of CONFIRMSHAMING_PATTERNS) {
-        if (pat.test(text)) {
+        if (pat.test(item.text)) {
           return {
             id: generateId(),
             guideline: 16,
@@ -318,9 +342,10 @@ export class NLPAnalyzer {
             description: '거절 버튼에 사용자에게 죄책감을 유발하는 문구가 사용되었습니다.',
             evidence: {
               type: 'text_analysis',
-              raw: text,
-              detail: { pattern: 'confirmshaming', matchedText: text },
+              raw: item.text,
+              detail: { pattern: 'confirmshaming', matchedText: item.text },
             },
+            element: makeElementInfo(item.xpath),
           };
         }
       }

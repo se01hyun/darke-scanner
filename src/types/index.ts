@@ -69,11 +69,17 @@ export interface ScriptPatternPayload {
   patternType: 'random_counter' | 'timer_reset';
 }
 
+// NLP 텍스트 수집 단위: 텍스트 + 출처 요소 XPath
+export interface NLPTextItem {
+  text: string;
+  xpath: string;
+}
+
 // NLP 텍스트 수집 페이로드
 export interface NLPTextsPayload {
-  pageTexts: string[];   // 상품명·설명·팝업 등 일반 텍스트
-  reviewTexts: string[]; // 리뷰/후기 텍스트
-  ctaTexts: string[];    // CTA 버튼·링크 텍스트
+  pageTexts: NLPTextItem[];   // 상품명·설명·팝업 등 일반 텍스트
+  reviewTexts: NLPTextItem[]; // 리뷰/후기 텍스트
+  ctaTexts: NLPTextItem[];    // CTA 버튼·링크 텍스트
 }
 
 // 모듈 간 메시지 타입
@@ -84,4 +90,5 @@ export type MessageType =
   | { type: 'NLP_TEXTS';           payload: NLPTextsPayload }
   | { type: 'SCAN_COMPLETE';       payload: DetectionResult }
   | { type: 'GET_RESULT';          payload: { url: string } }
-  | { type: 'RESULT_RESPONSE';     payload: DetectionResult | null };
+  | { type: 'RESULT_RESPONSE';     payload: DetectionResult | null }
+  | { type: 'SCROLL_TO_ELEMENT';   payload: { xpath: string } };

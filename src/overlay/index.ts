@@ -8,6 +8,15 @@ import { SEVERITY_KO, MODULE_KO } from '../utils/display';
 // ── 스타일 (Shadow DOM 내부 전용) ─────────────────────────────────────────────
 
 const STYLES = `
+  @keyframes ds-flash {
+    0%   { box-shadow: 0 0 0 0   rgba(251,191,36,0); }
+    25%  { box-shadow: 0 0 0 8px rgba(251,191,36,0.85); }
+    55%  { box-shadow: 0 0 0 4px rgba(251,191,36,0.4); }
+    80%  { box-shadow: 0 0 0 8px rgba(251,191,36,0.85); }
+    100% { box-shadow: 0 0 0 0   rgba(251,191,36,0); }
+  }
+  .highlight.ds-flash { animation: ds-flash 0.9s ease; }
+
   .highlight {
     position: fixed;
     box-sizing: border-box;
@@ -310,6 +319,51 @@ class OverlayManager {
     window.addEventListener('scroll', () => this.scheduleReposition(), { passive: true, capture: true });
     window.addEventListener('resize', () => this.scheduleReposition(), { passive: true });
   }
+
+  // 팝업에서 SCROLL_TO_ELEMENT 요청 시 호출
+  scrollAndFlash(xpath: string): void {
+    const entry = this.entries.find(e => e.xpath === xpath);
+    if (!entry) return;
+
+    // 1. 실제 DOM 요소로 스크롤 (xpath 우선, 실패 시 저장된 boundingRect 폴백)
+    const target = resolveXPath(xpath);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      // xpath 실패(동적 DOM 변경 등) — 스캔 시점의 절대 좌표로 폴백 스크롤
+      const r = entry.boundingRect;
+      if (r.width > 0 || r.height > 0) {
+        window.scrollTo({
+          top: Math.max(0, r.top - window.innerHeight / 2),
+          behavior: 'smooth',
+        });
+      }
+    }
+
+    // 2. 스크롤이 어느 정도 완료된 후 하이라이트 강조
+    // 숨겨진(display:none) 하이라이트는 강제로 복원한 뒤 flash 적용
+    setTimeout(() => {
+      // xpath가 실패했거나 boundingRect 폴백으로 숨겨진 경우 강제 표시
+      if (entry.el.style.display === 'none') {
+        const r = entry.boundingRect;
+        if (r.width > 0 && r.height > 0) {
+          entry.el.style.top    = `${r.top  - window.scrollY}px`;
+          entry.el.style.left   = `${r.left - window.scrollX}px`;
+          entry.el.style.width  = `${r.width}px`;
+          entry.el.style.height = `${r.height}px`;
+          entry.el.style.display = '';
+        }
+      }
+
+      // reflow를 강제하여 animation이 처음부터 재생되도록 함
+      entry.el.classList.remove('ds-flash');
+      void entry.el.offsetWidth;
+      entry.el.classList.add('ds-flash');
+      entry.el.addEventListener('animationend', () => {
+        entry.el.classList.remove('ds-flash');
+      }, { once: true });
+    }, 400);
+  }
 }
 
 // ── 진입점 ────────────────────────────────────────────────────────────────────
@@ -321,6 +375,8 @@ if (!document.querySelector('dark-scanner-overlay')) {
   chrome.runtime.onMessage.addListener((message: MessageType) => {
     if (message.type === 'SCAN_COMPLETE') {
       manager.render(message.payload.detections);
+    } else if (message.type === 'SCROLL_TO_ELEMENT') {
+      manager.scrollAndFlash(message.payload.xpath);
     }
   });
 }
