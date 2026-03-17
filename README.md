@@ -90,7 +90,7 @@ npm run build:prod
 ```
 
 1. Chrome → `chrome://extensions` → **개발자 모드** ON
-2. **압축해제된 확장 프로그램 로드** → 프로젝트 루트 폴더 선택
+2. **압축해제된 확장 프로그램 로드** → `dist/` 폴더 선택
 
 ---
 
@@ -101,6 +101,9 @@ npm run build:prod
 | `npm run build` | 개발 빌드 (sourcemap, 디버그 로그 활성) |
 | `npm run build:prod` | 프로덕션 빌드 (minify, 로그 완전 제거) |
 | `npm run watch` | 파일 변경 감지 자동 빌드 |
+| `npm run clean` | `dist/` 삭제 |
+| `npm run rebuild` | clean + 개발 빌드 |
+| `npm run rebuild:prod` | clean + 프로덕션 빌드 |
 | `npm run typecheck` | TypeScript 타입 검사 |
 
 ---
