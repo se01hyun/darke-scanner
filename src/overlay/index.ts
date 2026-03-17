@@ -128,7 +128,7 @@ const STYLES = `
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
 
-function resolveXPath(xpath: string): HTMLElement | null {
+export function resolveXPath(xpath: string): HTMLElement | null {
   try {
     const result = document.evaluate(
       xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null,

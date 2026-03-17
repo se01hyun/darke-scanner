@@ -7,7 +7,7 @@ const FTC_GUIDELINE_URL = 'https://www.ftc.go.kr/www/selectBbsNttView.do?pageUni
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
-function scoreVerdict(score: number): { label: string; cls: string; fillCls: string } {
+export function scoreVerdict(score: number): { label: string; cls: string; fillCls: string } {
   if (score <= 30) return { label: '안전',  cls: 'verdict-safe',    fillCls: 'fill-safe'    };
   if (score <= 60) return { label: '주의',  cls: 'verdict-caution', fillCls: 'fill-caution' };
   return               { label: '위험',  cls: 'verdict-danger',  fillCls: 'fill-danger'  };
@@ -15,7 +15,7 @@ function scoreVerdict(score: number): { label: string; cls: string; fillCls: str
 
 // ── 렌더러 ────────────────────────────────────────────────────────────────────
 
-function renderNoResult(): HTMLElement {
+export function renderNoResult(): HTMLElement {
   const el = document.createElement('div');
   el.className = 'state-view';
   el.innerHTML = `
@@ -26,7 +26,7 @@ function renderNoResult(): HTMLElement {
   return el;
 }
 
-function renderClean(result: DetectionResult): HTMLElement {
+export function renderClean(result: DetectionResult): HTMLElement {
   const el = document.createElement('div');
   el.className = 'state-view';
 
@@ -42,7 +42,7 @@ function renderClean(result: DetectionResult): HTMLElement {
   return el;
 }
 
-function renderScoreSection(result: DetectionResult): HTMLElement {
+export function renderScoreSection(result: DetectionResult): HTMLElement {
   const { overallRiskScore: score, detections } = result;
   const { label, cls, fillCls } = scoreVerdict(score);
 
@@ -86,7 +86,7 @@ function renderScoreSection(result: DetectionResult): HTMLElement {
  * network 모듈 탐지 결과에 대해 진짜/가짜 여부 판정 배지 HTML을 반환한다 (UI-07).
  * non-network 탐지면 빈 문자열 반환.
  */
-function renderNetworkVerdict(d: DarkPatternDetection): string {
+export function renderNetworkVerdict(d: DarkPatternDetection): string {
   if (d.module !== 'network') return '';
 
   const { type, detail } = d.evidence;
@@ -131,7 +131,7 @@ function renderNetworkVerdict(d: DarkPatternDetection): string {
   return '';
 }
 
-function renderCard(d: DarkPatternDetection, tabId: number): HTMLElement {
+export function renderCard(d: DarkPatternDetection, tabId: number): HTMLElement {
   const card = document.createElement('div');
   card.className = 'detection-card';
 

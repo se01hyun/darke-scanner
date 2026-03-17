@@ -27,6 +27,11 @@ const chromeMock = {
     session: { get: vi.fn(), set: vi.fn() },
     local:   { get: vi.fn(), set: vi.fn() },
   },
+  tabs: {
+    query:       vi.fn().mockResolvedValue([]),
+    sendMessage: vi.fn().mockResolvedValue(undefined),
+    create:      vi.fn().mockResolvedValue(undefined),
+  },
 };
 
 // @ts-expect-error — chrome 전역은 테스트 환경에서 직접 주입
