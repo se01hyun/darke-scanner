@@ -12,9 +12,9 @@
 
 import * as ort from 'onnxruntime-web';
 import { tokenize, MAX_SEQ_LEN } from '../nlp/tokenizer';
+import { HIDDEN_SIZE, meanPool, softmaxHighClass } from '../nlp/onnx-utils';
 
 const MODEL_FILENAME = 'models/koelectra-fomo.onnx';
-const HIDDEN_SIZE    = 256;
 
 let session: ort.InferenceSession | null = null;
 
@@ -60,11 +60,7 @@ async function runPressure(text: string): Promise<number> {
   const logits = results['logits']?.data as Float32Array | undefined;
   if (!logits) throw new Error('logits 출력 없음');
 
-  const arr  = Array.from(logits);
-  const max  = Math.max(...arr);
-  const exps = arr.map((l) => Math.exp(l - max));
-  const sum  = exps.reduce((a, b) => a + b, 0);
-  return Math.round((exps[exps.length - 1] / sum) * 100);
+  return softmaxHighClass(logits);
 }
 
 // ── 메시지 리스너 ──────────────────────────────────────────────────────────
@@ -97,16 +93,4 @@ chrome.runtime.onMessage.addListener(
   },
 );
 
-// ── 내부 유틸 ─────────────────────────────────────────────────────────────
-
-function meanPool(hidden: Float32Array, seqLen: number, hiddenSize: number): Float32Array {
-  const pooled = new Float32Array(hiddenSize);
-  for (let t = 0; t < seqLen; t++) {
-    for (let h = 0; h < hiddenSize; h++) {
-      pooled[h] += hidden[t * hiddenSize + h];
-    }
-  }
-  for (let h = 0; h < hiddenSize; h++) pooled[h] /= seqLen;
-  return pooled;
-}
 

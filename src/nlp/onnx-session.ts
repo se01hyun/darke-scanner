@@ -6,9 +6,7 @@
 
 import * as ort from 'onnxruntime-web';
 import { tokenize, cosineSim, MAX_SEQ_LEN } from './tokenizer';
-
-// KoELECTRA-small hidden size (256). base 모델이면 768 으로 변경.
-const HIDDEN_SIZE = 256;
+import { HIDDEN_SIZE, meanPool, softmaxHighClass } from './onnx-utils';
 
 export class OnnxSession {
   private session: ort.InferenceSession | null = null;
@@ -146,28 +144,3 @@ export class OnnxSession {
   }
 }
 
-// ── 내부 유틸 ──────────────────────────────────────────────────────────────
-
-/** Float32Array [seqLen × hiddenSize] → mean pooling → [hiddenSize] */
-function meanPool(hidden: Float32Array, seqLen: number, hiddenSize: number): Float32Array {
-  const pooled = new Float32Array(hiddenSize);
-  for (let t = 0; t < seqLen; t++) {
-    for (let h = 0; h < hiddenSize; h++) {
-      pooled[h] += hidden[t * hiddenSize + h];
-    }
-  }
-  for (let h = 0; h < hiddenSize; h++) {
-    pooled[h] /= seqLen;
-  }
-  return pooled;
-}
-
-/** logits → softmax → 마지막 클래스(high_pressure) 확률 → 0~100 점수 */
-function softmaxHighClass(logits: Float32Array): number {
-  const arr  = Array.from(logits);
-  const max  = Math.max(...arr);
-  const exps = arr.map((l) => Math.exp(l - max));
-  const sum  = exps.reduce((a, b) => a + b, 0);
-  const prob = exps[exps.length - 1] / sum;
-  return Math.round(prob * 100);
-}

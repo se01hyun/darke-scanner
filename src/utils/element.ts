@@ -30,7 +30,7 @@ function relativeLuminance(r: number, g: number, b: number): number {
  * 투명(rgba alpha=0) 이면 부모 노드를 순회하여 첫 불투명 배경을 사용.
  * 끝까지 투명이면 흰색(255,255,255)으로 fallback.
  */
-export function getEffectiveBgColor(el: HTMLElement): [number, number, number] {
+function getEffectiveBgColor(el: HTMLElement): [number, number, number] {
   let current: HTMLElement | null = el;
   while (current) {
     const rgba = parseRGBA(getComputedStyle(current).backgroundColor);

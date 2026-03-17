@@ -1,6 +1,6 @@
 // src/utils/debug-logger.ts
 
-export const DEBUG_MODE: boolean = __DS_DEBUG__;
+const DEBUG_MODE: boolean = __DS_DEBUG__;
 
 const P = '[DarkScanner]';
 
