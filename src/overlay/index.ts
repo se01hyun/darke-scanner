@@ -323,13 +323,12 @@ class OverlayManager {
   // 팝업에서 SCROLL_TO_ELEMENT 요청 시 호출
   scrollAndFlash(xpath: string): void {
     const entry = this.entries.find(e => e.xpath === xpath);
-    if (!entry) return;
 
     // 1. 실제 DOM 요소로 스크롤 (xpath 우선, 실패 시 저장된 boundingRect 폴백)
     const target = resolveXPath(xpath);
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
+    } else if (entry) {
       // xpath 실패(동적 DOM 변경 등) — 스캔 시점의 절대 좌표로 폴백 스크롤
       const r = entry.boundingRect;
       if (r.width > 0 || r.height > 0) {
@@ -339,6 +338,9 @@ class OverlayManager {
         });
       }
     }
+
+    // entry 없으면 스크롤만 하고 flash 효과는 생략
+    if (!entry) return;
 
     // 2. 스크롤이 어느 정도 완료된 후 하이라이트 강조
     // 숨겨진(display:none) 하이라이트는 강제로 복원한 뒤 flash 적용

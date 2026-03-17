@@ -980,6 +980,8 @@ export class DOMScanner {
         const text = (el.textContent ?? '').trim();
         const matchedTerm = DRIP_PRICE_TERMS.find((t) => text.includes(t));
         if (!matchedTerm) return;
+        // 무료 배송·무료 제공 텍스트는 오탐 — 비용 없음이 명시된 경우 스킵
+        if (/무료|공짜|0\s*원|free/i.test(text)) return;
 
         seen.add(el);
         const style = getComputedStyle(el);
@@ -1068,8 +1070,12 @@ export class DOMScanner {
         const rect = el.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) return;
 
+        // 텍스트 패턴 검증 — 실시간 활동 문구가 없으면 리뷰 카운트 등 오탐으로 스킵
+        const fullText = el.textContent ?? '';
+        if (!SOCIAL_PROOF_RE.test(fullText) && !SOCIAL_PROOF_NUMBER_RE.test(fullText)) return;
+
         seen.add(el);
-        const text = (el.textContent ?? '').trim().slice(0, 100);
+        const text = fullText.trim().slice(0, 100);
         logger.log('DOM:소비자활동알림', `selector="${selector}" text="${text}"`);
 
         detections.push({

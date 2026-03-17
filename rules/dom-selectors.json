@@ -1,13 +1,34 @@
 {
-  "version": "1.1.0",
-  "changelog": "v1.1.0 — Phase 5 QA: 오탐 감소를 위해 너무 넓은 선택자 제거 및 :not() 제외 조건 추가",
+  "version": "1.2.0",
+  "changelog": "v1.2.0 — 국내 주요 쇼핑몰(쿠팡·11번가·G마켓·네이버·티몬·위메프) 클래스 패턴 추가",
   "selectors": {
     "countdown": [
       "[data-countdown]",
+      "[data-timer]",
       "[class*='countdown']",
       "[class*='timer']:not([class*='delivery']):not([class*='estimate']):not([class*='arrival']):not([class*='cook'])",
       "[id*='countdown']",
-      "[id*='timer']:not([id*='delivery']):not([id*='estimate'])"
+      "[id*='timer']:not([id*='delivery']):not([id*='estimate'])",
+      "[class*='expiryArea']",
+      "[class*='flashDeal']",
+      "[class*='dealEndTime']",
+      "[class*='ExpiryTimer']",
+      "[class*='count_down']",
+      "[class*='time_deal']",
+      "[class*='timeleft']:not([class*='timeleft-label'])",
+      "[class*='timeLimit']",
+      "[class*='timeCounter']",
+      "[class*='timeDeal']",
+      "[class*='timeLeft']",
+      "[class*='flashSale']",
+      "[class*='dealTime']",
+      "[class*='saleEnd']",
+      "[class*='dealTimer']",
+      "[class*='deal-timer']",
+      "[class*='limitedTime']",
+      "[class*='limited-time']",
+      "[class*='hotdeal-timer']",
+      "[class*='offer-expire']"
     ],
     "stock_warning": [
       "[class*='soldout']",
@@ -19,11 +40,32 @@
       "[class*='limited-qty']",
       "[class*='limited-quantity']",
       "[data-stock]",
-      "[data-remain]"
+      "[data-remain]",
+      "[class*='stockCount']:not([class*='stockCountLabel'])",
+      "[class*='soldOutWrap']",
+      "[class*='remainCount']:not([class*='remainCountText'])",
+      "[class*='stock_count']",
+      "[class*='remain_qty']",
+      "[class*='sold_out_wrap']",
+      "[class*='remainQty']",
+      "[class*='stockArea']:not([class*='stockAreaTitle'])",
+      "[class*='stockInfo']",
+      "[class*='qty-remain']",
+      "[class*='qtyRemain']",
+      "[data-qty-remain]",
+      "[class*='leftItem']",
+      "[class*='left-item']"
     ],
     "preselected_options": [
       "input[type='checkbox'][checked]",
-      "input[type='radio'][checked]"
+      "input[type='radio'][checked]",
+      "[role='checkbox'][aria-checked='true']",
+      "[role='radio'][aria-checked='true']",
+      "[role='option'][aria-selected='true']",
+      "[class*='defaultSelected']",
+      "[class*='default-selected']",
+      "[class*='isSelected'][class*='option']",
+      "[class*='is-selected'][class*='option']"
     ],
     "false_discount": [
       "[class*='discount-rate']",
@@ -32,16 +74,38 @@
       "[class*='percent-off']",
       "[class*='badge-discount']",
       "[class*='dcrate']",
-      "[class*='sale-badge']"
+      "[class*='sale-badge']",
+      "[class*='discountRate']",
+      "[class*='discountBadge']",
+      "[class*='dc_percent']",
+      "[class*='price_dc']",
+      "[class*='sale_percent']",
+      "[class*='dcRate']",
+      "[class*='dc-rate']",
+      "[class*='salePercent']",
+      "[class*='sale-percent']",
+      "[class*='off-badge']",
+      "[class*='disc-rate']",
+      "[class*='priceDc']"
     ],
     "nagging": [
       "dialog[open]",
       "[role='dialog']",
-      "[class*='popup']:not([class*='popup-menu']):not([class*='popup-close'])",
-      "[class*='modal']:not([class*='modal-close']):not([class*='modal-overlay'])",
+      "[class*='popup']:not([class*='popup-menu']):not([class*='popup-close']):not([class*='popup-btn'])",
+      "[class*='modal']:not([class*='modal-close']):not([class*='modal-overlay']):not([class*='modal-btn'])",
       "[class*='layer-pop']",
       "[class*='layer-wrap']",
-      "[class*='bottom-sheet']"
+      "[class*='bottom-sheet']",
+      "[class*='layerPop']:not([class*='layerPopClose'])",
+      "[class*='modalWrap']:not([class*='modalWrapClose'])",
+      "[class*='layer_pop']:not([class*='pop_close'])",
+      "[class*='ly_pop']",
+      "[class*='pop_wrap']:not([class*='pop_close'])",
+      "[class*='NModal']",
+      "[class*='n-modal']",
+      "[class*='dimmed-layer']",
+      "[class*='overlayPop']",
+      "[class*='floating-popup']"
     ],
     "bait_and_switch": [
       "[class*='soldout']",
@@ -50,7 +114,9 @@
       "[class*='outofstock']",
       "[class*='nostock']",
       "[class*='no-stock']",
-      "[class*='unavailable']"
+      "[class*='unavailable']",
+      "[class*='soldOut']:not([class*='soldOutLabel'])",
+      "[class*='sold_out']:not([class*='sold_out_text'])"
     ],
     "click_fatigue_steps": [
       "ol[class*='step']",
@@ -60,7 +126,17 @@
       "[class*='stepbar']",
       "[class*='wizard-step']",
       "[class*='checkout-step']",
-      "[class*='progress-step']"
+      "[class*='progress-step']",
+      "[class*='progressStep']",
+      "[class*='checkoutStep']",
+      "[class*='order_step']",
+      "[class*='join_step']",
+      "[class*='pay_step']",
+      "[class*='buyStep']",
+      "[class*='buy-step']",
+      "[class*='payStep']",
+      "[class*='checkoutProcess']",
+      "[class*='purchase-step']"
     ],
     "drip_pricing": [
       "[class*='hidden-fee']",
@@ -69,7 +145,16 @@
       "[class*='added-fee']",
       "[class*='surcharge']",
       "[data-fee]",
-      "[data-extra-cost]"
+      "[data-extra-cost]",
+      "[class*='serviceFee']",
+      "[class*='service-fee']",
+      "[class*='addedFee']",
+      "[class*='added_fee']",
+      "[class*='hiddenCost']",
+      "[class*='additionalFee']",
+      "[class*='additional-fee']",
+      "[class*='installFee']",
+      "[class*='setupFee']"
     ],
     "social_proof": [
       "[class*='social-proof']",
@@ -81,7 +166,22 @@
       "[class*='live-count']",
       "[class*='realtime-count']",
       "[data-viewer-count]",
-      "[data-purchase-count]"
+      "[data-purchase-count]",
+      "[class*='viewerCount']",
+      "[class*='recentBuy']",
+      "[class*='realtimeView']",
+      "[class*='view_cnt']",
+      "[class*='real_watch']",
+      "[class*='recent_buy']",
+      "[class*='viewCount']:not([class*='reviewCount'])",
+      "[class*='recentOrder']",
+      "[class*='realtimePurchase']",
+      "[class*='nowViewing']",
+      "[class*='watchCount']",
+      "[class*='nowCount']",
+      "[class*='realtime']:not([class*='realtimeInput']):not([class*='realtimeSearch'])",
+      "[data-realtime-count]",
+      "[data-now-viewing]"
     ],
     "disguised_ads": [
       "[data-ad]",
@@ -101,7 +201,19 @@
       "iframe[src*='googlesyndication']",
       "iframe[src*='mobon.net']",
       "iframe[src*='naverads']",
-      "iframe[src*='kakaocdn']"
+      "iframe[src*='kakaocdn']",
+      "[class*='adProduct']",
+      "[data-ad-type]",
+      "[class*='adLabel']",
+      "[class*='power_link']",
+      "[class*='powerLink']",
+      "[class*='adArea']:not([class*='adAreaText'])",
+      "[class*='ad_area']",
+      "[class*='kakao-ad']",
+      "[class*='kakaoAd']",
+      "iframe[src*='cauly.net']",
+      "iframe[src*='mezzo.kr']",
+      "[class*='mezzo-ad']"
     ]
   },
   "removed_in_v1.1.0": {
