@@ -22,16 +22,17 @@ const STYLES = `
   /* 배지 호버 시 해당 하이라이트를 전면으로 */
   .highlight:has(.badge:hover) { z-index: 2147483640; }
 
-  /* ── 배지 (좌상단 고정) ── */
+  /* ── 배지 (highlight 상단 위에 부유) ── */
   .badge {
     position: absolute;
-    top: -1px;
+    bottom: calc(100% + 1px);  /* highlight box 바로 위 */
+    top: auto;
     left: -1px;
     display: flex;
     align-items: center;
     gap: 2px;
     padding: 1px 6px 1px 4px;
-    border-radius: 0 0 4px 0;
+    border-radius: 4px 4px 4px 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     font-weight: 700;
@@ -50,6 +51,7 @@ const STYLES = `
   .tooltip {
     display: none;
     position: absolute;
+    top: calc(100% + 4px);  /* 배지 아래 */
     left: 0;
     min-width: 230px;
     max-width: 300px;
@@ -269,15 +271,16 @@ class OverlayManager {
       el.style.height  = `${height!}px`;
       el.style.display = '';   // CSS 기본값(block) 복원
 
-      // 툴팁 방향: 하단 공간이 170px 미만이고 상단에 여유가 있으면 위쪽으로
+      // 툴팁 방향: 배지가 요소 위에 있으므로 기본은 배지 아래(=요소 방향)
+      // 배지 아래 공간이 170px 미만이면 배지 위로 올림
       const tooltip = el.querySelector<HTMLElement>('.tooltip');
       if (tooltip) {
-        const spaceBelow = window.innerHeight - top! - height!;
+        const spaceBelow = window.innerHeight - top!;
         if (spaceBelow < 170 && top! > 170) {
           tooltip.style.top    = '';
-          tooltip.style.bottom = 'calc(100% + 6px)';
+          tooltip.style.bottom = 'calc(100% + 4px)';
         } else {
-          tooltip.style.top    = 'calc(100% + 6px)';
+          tooltip.style.top    = 'calc(100% + 4px)';
           tooltip.style.bottom = '';
         }
       }
