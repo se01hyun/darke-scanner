@@ -10,12 +10,19 @@
     "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});console.log('dist/ cleaned.')\"",
     "rebuild": "npm run clean && npm run build",
     "rebuild:prod": "npm run clean && npm run build:prod",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
+    "@vitest/coverage-v8": "^4.1.0",
     "esbuild": "^0.20.0",
-    "typescript": "^5.4.0"
+    "jsdom": "^29.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "onnxruntime-web": "^1.17.0"

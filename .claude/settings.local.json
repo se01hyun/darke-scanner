@@ -22,7 +22,9 @@
       "Bash(node:*)",
       "Bash(pip install:*)",
       "Bash(python scripts/export-onnx.py)",
-      "Bash(python scripts/verify-onnx.py)"
+      "Bash(python scripts/verify-onnx.py)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)"
     ]
   }
 }
