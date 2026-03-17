@@ -1007,6 +1007,31 @@ export class DOMScanner {
     }
 
     // 2) 텍스트 노드 기반 보완 탐지: 추가 비용 키워드가 포함된 요소 중 숨겨지거나 소자인 경우
+    //
+    // 사전 수집: 페이지에 이미 보이는(visible) 상태로 표시된 추가비용 키워드 목록.
+    // 쿠팡 등 반응형 페이지는 "배송비 2,500원"을 화면에 표시하면서 동시에
+    // display:none 복사본을 DOM에 두는 경우가 많다. 이미 공개된 정보의 숨겨진
+    // 복사본을 드립 프라이싱으로 오탐하지 않기 위해 먼저 제외 목록을 만든다.
+    const visibleTerms = new Set<string>();
+    {
+      const preWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let preNode: Node | null;
+      while ((preNode = preWalker.nextNode())) {
+        const preText = preNode.textContent ?? '';
+        const term = DRIP_PRICE_TERMS.find((t) => preText.includes(t));
+        if (!term) continue;
+        const p = preNode.parentElement;
+        if (!p) continue;
+        const s = getComputedStyle(p);
+        const isVisible =
+          s.display !== 'none' &&
+          s.visibility !== 'hidden' &&
+          parseFloat(s.opacity) !== 0 &&
+          parseFloat(s.fontSize) >= DRIP_HIDDEN_FONT_THRESHOLD;
+        if (isVisible) visibleTerms.add(term);
+      }
+    }
+
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node: Node | null;
     let count = 0;
@@ -1028,6 +1053,14 @@ export class DOMScanner {
       const isSmallFont = !isNaN(fontSize) && fontSize < DRIP_HIDDEN_FONT_THRESHOLD;
 
       if (!isHidden && !isSmallFont) continue;
+
+      // 같은 키워드가 페이지 어딘가에 이미 보이는 상태로 표시되어 있으면
+      // 반응형 레이아웃의 숨겨진 복사본이므로 드립 프라이싱 오탐 → 스킵
+      if (isHidden && visibleTerms.has(matchedTerm)) {
+        logger.warn('DOM:드립프라이싱',
+          `보이는 복사본 존재 — 숨겨진 요소 스킵 term="${matchedTerm}"`);
+        continue;
+      }
 
       seen.add(parent);
       count++;
