@@ -47,6 +47,10 @@ dark-scanner/
 - `DOMContentLoaded` 시 전체 스캔, 이후 `MutationObserver`로 동적 변경 감지.
 - SPA 대응: `history.pushState` / `popstate` 이벤트 감지 후 재스캔 트리거.
 - 탐지 결과는 `DarkPatternDetection` 인터페이스로 직렬화하여 Background로 전달.
+- **중복 제거:** `deduplicateOverlapping()`은 두 단계로 중복을 제거한다.
+  1. 조상-자손 관계: 동일 가이드라인의 자손 요소는 제거하고 가장 바깥쪽 하나만 유지.
+  2. 근접 형제 관계: LCA(최근 공통 조상)가 양쪽으로부터 3단계 이내인 경우(`isCloseRelative`), 렌더 면적이 작은 쪽을 제거. 같은 UI 컴포넌트 안에서 여러 선택자가 겹쳐 발생하는 배지 중복 방지.
+- **위장광고 고지 확인(`getAdDisclosureArea`):** 인접 요소의 **직계 텍스트 노드**만 검사한다(shallow text). 깊이 중첩된 텍스트를 포함하면 다른 광고 요소 내부의 "광고" 레이블이 원거리 요소의 정상 고지로 오인되는 오탐이 발생한다.
 
 ### Module 2: NLP Analyzer (`src/nlp/`, `src/background/`)
 - **반드시 Hybrid 2-Pass 방식을 따른다.**
