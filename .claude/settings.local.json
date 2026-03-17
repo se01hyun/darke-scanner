@@ -21,7 +21,8 @@
       "Bash(sort -t: -k2 -n)",
       "Bash(node:*)",
       "Bash(pip install:*)",
-      "Bash(python scripts/export-onnx.py)"
+      "Bash(python scripts/export-onnx.py)",
+      "Bash(python scripts/verify-onnx.py)"
     ]
   }
 }
