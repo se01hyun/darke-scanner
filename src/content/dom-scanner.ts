@@ -25,6 +25,51 @@ const OPACITY_THRESHOLD = 0.70;
 // hh:mm 또는 hh:mm:ss 형태의 카운트다운 텍스트 패턴
 const COUNTDOWN_TEXT_RE = /\d{1,2}:\d{2}(:\d{2})?/;
 
+// ─── 가이드라인 17: 카운트다운 소스 분석 ──────────────────────────────────────
+type TimerSource = 'server_driven' | 'client_reset' | 'client_only' | 'unknown';
+
+/**
+ * 카운트다운 요소가 서버 데이터 기반인지 순수 클라이언트 로직인지 판별한다.
+ *
+ * 판별 순서:
+ *  1. 요소의 data-* 속성에 숫자값 포함 → 서버 렌더링 마감 시한 (server_driven)
+ *  2. 인라인 스크립트 내 타이머 만료 후 초기화 패턴 → 허위 긴박감 (client_reset)
+ *  3. fetch() URL에 time/deadline/expire/remain 키워드 → 서버 연동 (server_driven)
+ *  4. setInterval + 감소 연산, fetch 없음 → 순수 클라이언트 (client_only)
+ *  5. 판별 불가 → unknown
+ */
+function analyzeTimerSource(el: HTMLElement): TimerSource {
+  // 1. 서버 렌더링 data 속성 (data-end-time, data-deadline 등)
+  const serverAttrRe = /^data-(end[_-]?time|deadline|expire|target[_-]?time|countdown[_-]?end|finish[_-]?at|remaining)/i;
+  const hasServerAttr = Array.from(el.attributes).some(
+    (a) => serverAttrRe.test(a.name) && /\d/.test(a.value)
+  );
+  if (hasServerAttr) return 'server_driven';
+
+  // 인라인 스크립트 전체 수집
+  const src = Array.from(document.querySelectorAll<HTMLScriptElement>('script:not([src])'))
+    .map((s) => s.textContent ?? '')
+    .join('\n');
+  if (!src) return 'unknown';
+
+  // 2. 타이머 만료(≤0) 후 초기값 재할당 → 허위 긴박감 가장 강한 신호
+  // 예: if (timer <= 0) timer = 300;  /  if (count === 0) count = resetVal;
+  if (/(?:<=|===|==)\s*0[\s\S]{0,100}=\s*\d{2,}/.test(src)) return 'client_reset';
+
+  // 3. fetch() URL에 시간 관련 키워드 포함 → 서버에서 마감 시한 수신
+  if (/fetch\s*\(\s*['"`][^'"`]*(?:time|timer|countdown|deadline|expire|remain)[^'"`]*['"`]/i.test(src)) {
+    return 'server_driven';
+  }
+
+  // 4. setInterval/setTimeout + 감소 연산 (fetch 없음) → 순수 클라이언트
+  const hasInterval = /set(?:Interval|Timeout)\s*\(/.test(src);
+  const hasDecrement = /(?:--[\w$]+|[\w$]+\s*-=\s*1)/.test(src);
+  const hasFetch = /(?:fetch\s*\(|new\s+XMLHttpRequest|axios\s*\.)/.test(src);
+  if (hasInterval && hasDecrement && !hasFetch) return 'client_only';
+
+  return 'unknown';
+}
+
 // 텍스트 노드 스캔 시 최대 탐지 수 (오탐 flood 방지)
 const MAX_TEXT_DETECTIONS = 5;
 
@@ -143,23 +188,54 @@ export class DOMScanner {
 
         const text = (el.textContent ?? '').trim();
         const hasTimePattern = COUNTDOWN_TEXT_RE.test(text);
+        const timerSource = analyzeTimerSource(el);
 
         logger.log('DOM:카운트다운',
-          `selector="${selector}" hasTime=${hasTimePattern} text="${text.slice(0, 80)}"`);
+          `selector="${selector}" hasTime=${hasTimePattern} source=${timerSource} text="${text.slice(0, 80)}"`);
+
+        // 타이머 소스에 따라 심각도·확신도·설명 분기
+        type CountdownMeta = { severity: DarkPatternDetection['severity']; confidence: DarkPatternDetection['confidence']; description: string };
+        const meta: CountdownMeta = ((): CountdownMeta => {
+          switch (timerSource) {
+            case 'client_reset':
+              return {
+                severity: 'high',
+                confidence: 'confirmed',
+                description: '카운트다운이 만료 후 자동으로 재시작됩니다. 실제 마감 시한이 없는 허위 긴박감 조성으로 확인됩니다.',
+              };
+            case 'client_only':
+              return {
+                severity: 'medium',
+                confidence: 'suspicious',
+                description: '카운트다운이 서버 데이터 없이 클라이언트 코드만으로 동작합니다. 실제 마감 시한과 무관할 가능성이 높습니다.',
+              };
+            case 'server_driven':
+              return {
+                severity: 'low',
+                confidence: 'suspicious',
+                description: '카운트다운 타이머가 서버 데이터와 연동된 것으로 보입니다. 실제 마감 시한일 가능성이 있으나 직접 확인을 권장합니다.',
+              };
+            default:
+              return {
+                severity: 'medium',
+                confidence: hasTimePattern ? 'confirmed' : 'suspicious',
+                description: '카운트다운 타이머가 감지되었습니다. HTML/JS 소스로 서버 연동 여부를 확인할 수 없습니다.',
+              };
+          }
+        })();
 
         detections.push({
           id: generateId(),
           guideline: 17,
           guidelineName: '시간제한 알림',
-          severity: 'medium',
-          // 시간 패턴(00:05)까지 있으면 confirmed, 선택자만 매칭이면 suspicious
-          confidence: hasTimePattern ? 'confirmed' : 'suspicious',
+          severity: meta.severity,
+          confidence: meta.confidence,
           module: 'dom',
-          description: '카운트다운 타이머가 감지되었습니다. 실제 마감 시한인지 확인이 필요합니다.',
+          description: meta.description,
           evidence: {
             type: 'dom_element',
             raw: el.outerHTML.slice(0, 300),
-            detail: { selector, text: text.slice(0, 100) },
+            detail: { selector, text: text.slice(0, 100), timerSource },
           },
           element: getElementInfo(el),
         });
