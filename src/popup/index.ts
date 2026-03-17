@@ -2,6 +2,9 @@ import type { DetectionResult, DarkPatternDetection, ReviewCluster } from '../ty
 import { escHtml } from '../utils/html';
 import { SEVERITY_KO, CONFIDENCE_KO, MODULE_KO } from '../utils/display';
 
+// 공정위 온라인 다크패턴 자율관리 가이드라인 원문 URL (UI-05)
+const FTC_GUIDELINE_URL = 'https://www.ftc.go.kr/www/selectBbsNttView.do?pageUnit=10&pageIndex=1&searchCnd=all&searchKrwd=%EB%8B%A4%ED%81%AC%ED%8C%A8%ED%84%B4&key=12&bordCd=3&searchCtgry=01,02&nttSn=42957';
+
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
 function scoreVerdict(score: number): { label: string; cls: string; fillCls: string } {
@@ -165,6 +168,17 @@ function renderCard(d: DarkPatternDetection, tabId: number): HTMLElement {
       <div class="card-meta">${escHtml(MODULE_KO[d.module] ?? d.module)} 모듈</div>
     </div>
   `;
+
+  // UI-05: 공정위 기준 원문 링크 — 카드 클릭(SCROLL_TO_ELEMENT)과 분리된 별도 버튼
+  const ftcBtn = document.createElement('button');
+  ftcBtn.className = 'ftc-link';
+  ftcBtn.textContent = '공정위 기준 보기 →';
+  ftcBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // 카드 클릭(스크롤 이동) 이벤트 차단
+    chrome.tabs.create({ url: FTC_GUIDELINE_URL });
+  });
+  card.querySelector('.card-meta')?.insertAdjacentElement('afterend', ftcBtn);
+
   return card;
 }
 

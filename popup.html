@@ -261,6 +261,23 @@
       color: var(--muted);
     }
 
+    /* ── 공정위 원문 링크 (UI-05) ───────────────────────── */
+    .ftc-link {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 10px;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color 0.15s;
+    }
+    .ftc-link:hover { color: var(--subtext); }
+
     /* ── 네트워크 판정 배지 (UI-07) ─────────────────────── */
     .net-verdict {
       display: flex;
