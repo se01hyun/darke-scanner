@@ -2,6 +2,7 @@
 // 원본 페이지 스타일과 격리하기 위해 Shadow DOM(mode: 'closed')을 사용한다.
 
 import type { DarkPatternDetection, MessageType } from '../types';
+import { escHtml } from '../utils/html';
 
 // ── 스타일 (Shadow DOM 내부 전용) ─────────────────────────────────────────────
 
@@ -116,14 +117,6 @@ const STYLES = `
 
 const SEVERITY_KO: Record<string, string> = { high: '높음', medium: '보통', low: '낮음' };
 const MODULE_KO:   Record<string, string> = { dom: 'DOM', nlp: 'NLP', network: '네트워크' };
-
-function escHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function resolveXPath(xpath: string): HTMLElement | null {
   try {

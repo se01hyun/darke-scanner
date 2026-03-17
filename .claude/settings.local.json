@@ -11,7 +11,8 @@
       "WebFetch(domain:www.lawtimes.co.kr)",
       "Bash(wc:*)",
       "Bash(ls:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

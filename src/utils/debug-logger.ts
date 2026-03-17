@@ -16,17 +16,17 @@ export const logger = {
       console.groupEnd();
     }
   },
-  log: function(tag: string, ...args: any[]) {
+  log: function(tag: string, ...args: unknown[]) {
     if (DEBUG_MODE && typeof console !== 'undefined') {
       console.log(`${P}[${tag}]`, ...args);
     }
   },
-  warn: function(tag: string, ...args: any[]) {
+  warn: function(tag: string, ...args: unknown[]) {
     if (DEBUG_MODE && typeof console !== 'undefined') {
       console.warn(`${P}[${tag}]`, ...args);
     }
   },
-  detections: function(tag: string, detections: any[]) {
+  detections: function(tag: string, detections: unknown[]) {
     if (DEBUG_MODE && typeof console !== 'undefined' && detections.length > 0) {
       console.log(`${P}[${tag}] 탐지 결과:`, detections);
     }

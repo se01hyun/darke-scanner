@@ -1,4 +1,5 @@
 import type { DetectionResult, DarkPatternDetection, Severity, Confidence } from '../types';
+import { escHtml } from '../utils/html';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 
@@ -18,14 +19,6 @@ const MODULE_KO: Record<string, string> = {
 };
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
-
-function escHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function scoreVerdict(score: number): { label: string; cls: string; fillCls: string } {
   if (score <= 30) return { label: '안전',  cls: 'verdict-safe',    fillCls: 'fill-safe'    };

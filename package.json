@@ -7,6 +7,9 @@
     "build": "node esbuild.config.js",
     "build:prod": "node esbuild.config.js --prod",
     "watch": "node esbuild.config.js --watch",
+    "clean": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});console.log('dist/ cleaned.')\"",
+    "rebuild": "npm run clean && npm run build",
+    "rebuild:prod": "npm run clean && npm run build:prod",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
