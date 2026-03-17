@@ -45,12 +45,6 @@ export interface ReviewCluster {
   isSuspicious: boolean; // 코사인 유사도 임계값(0.85) 초과 여부
 }
 
-export interface NLPResult {
-  pressureScore: number; // 심리적 압박 지수 0~100
-  fomoKeywords: string[];
-  reviewClusters: ReviewCluster[];
-}
-
 // NLPAnalyzer.analyze() 반환 타입
 export interface NLPAnalysisResult {
   detections: DarkPatternDetection[];

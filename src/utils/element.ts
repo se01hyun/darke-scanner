@@ -49,11 +49,11 @@ export function getContrastRatio(el: HTMLElement): number {
   if (!textRGBA) return 1;
 
   const [bgR, bgG, bgB] = getEffectiveBgColor(el);
-  const L_text = relativeLuminance(textRGBA[0], textRGBA[1], textRGBA[2]);
-  const L_bg   = relativeLuminance(bgR, bgG, bgB);
+  const lText = relativeLuminance(textRGBA[0], textRGBA[1], textRGBA[2]);
+  const lBg   = relativeLuminance(bgR, bgG, bgB);
 
-  const lighter = Math.max(L_text, L_bg);
-  const darker  = Math.min(L_text, L_bg);
+  const lighter = Math.max(lText, lBg);
+  const darker  = Math.min(lText, lBg);
   return (lighter + 0.05) / (darker + 0.05);
 }
 
