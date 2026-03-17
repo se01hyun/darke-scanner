@@ -45,8 +45,15 @@ function verifyDist() {
 
   const allRequired = [...required, ...extraRequired];
 
-  const missing = allRequired.filter(f => !existsSync(join(distDir, f)));
-  const present = allRequired.filter(f =>  existsSync(join(distDir, f)));
+  // CI 환경(GitHub Actions 등)에서는 모델 파일(.onnx)이 gitignore로 제외되므로
+  // 해당 파일 검증을 건너뛴다. 로컬 빌드에서는 전체 검증을 수행한다.
+  const isCI = process.env.CI === 'true';
+  const checkRequired = isCI
+    ? allRequired.filter(f => !f.endsWith('.onnx'))
+    : allRequired;
+
+  const missing = checkRequired.filter(f => !existsSync(join(distDir, f)));
+  const present = checkRequired.filter(f =>  existsSync(join(distDir, f)));
 
   console.log('\n── dist/ 검증 결과 ──────────────────────────────────────');
   for (const f of present) console.log(`  ✓  ${f}`);
@@ -58,7 +65,11 @@ function verifyDist() {
     process.exit(1);
   }
 
-  console.log(`[verify] 전체 ${allRequired.length}개 파일 확인 완료.\n`);
+  const skipped = isCI ? allRequired.filter(f => f.endsWith('.onnx')) : [];
+  if (skipped.length > 0) {
+    console.log(`[verify] CI 환경 — .onnx 모델 파일 ${skipped.length}개 검증 생략.`);
+  }
+  console.log(`[verify] 전체 ${checkRequired.length}개 파일 확인 완료.\n`);
 }
 
 const isWatch = process.argv.includes('--watch');
