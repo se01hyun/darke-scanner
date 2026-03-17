@@ -20,7 +20,7 @@ function makeDetection(overrides: Partial<DarkPatternDetection> = {}): DarkPatte
     confidence: 'suspicious',
     module: 'dom',
     description: '허위 카운트다운 탐지',
-    evidence: { type: 'css_selector', detail: {} },
+    evidence: { type: 'dom_element', raw: '', detail: {} },
     ...overrides,
   };
 }
@@ -79,7 +79,7 @@ describe('renderNetworkVerdict', () => {
   it('script_pattern + timer_reset → 타이머 반복 초기화 배지', () => {
     const d = makeDetection({
       module: 'network',
-      evidence: { type: 'script_pattern', detail: { patternType: 'timer_reset', src: 'https://cdn.example.com/timer.js' } },
+      evidence: { type: 'script_pattern', raw: '', detail: { patternType: 'timer_reset', src: 'https://cdn.example.com/timer.js' } },
     });
     const html = renderNetworkVerdict(d);
     expect(html).toContain('net-verdict-fake');
@@ -90,7 +90,7 @@ describe('renderNetworkVerdict', () => {
   it('script_pattern + timer_reset + 인라인 → 인라인 스크립트 레이블', () => {
     const d = makeDetection({
       module: 'network',
-      evidence: { type: 'script_pattern', detail: { patternType: 'timer_reset', src: 'inline' } },
+      evidence: { type: 'script_pattern', raw: '', detail: { patternType: 'timer_reset', src: 'inline' } },
     });
     expect(renderNetworkVerdict(d)).toContain('인라인 스크립트');
   });
@@ -98,7 +98,7 @@ describe('renderNetworkVerdict', () => {
   it('script_pattern + random_counter → 난수 카운터 배지', () => {
     const d = makeDetection({
       module: 'network',
-      evidence: { type: 'script_pattern', detail: { patternType: 'random_counter', src: 'inline' } },
+      evidence: { type: 'script_pattern', raw: '', detail: { patternType: 'random_counter', src: 'inline' } },
     });
     const html = renderNetworkVerdict(d);
     expect(html).toContain('net-verdict-fake');
@@ -108,7 +108,7 @@ describe('renderNetworkVerdict', () => {
   it('network_analysis + increaseRate → 가격 상승 배지', () => {
     const d = makeDetection({
       module: 'network',
-      evidence: { type: 'network_analysis', detail: { increaseRate: 12.5 } },
+      evidence: { type: 'network_analysis', raw: '', detail: { increaseRate: 12.5 } },
     });
     const html = renderNetworkVerdict(d);
     expect(html).toContain('net-verdict-fake');
@@ -118,7 +118,7 @@ describe('renderNetworkVerdict', () => {
   it('network_analysis + no_server_response_for_tab → 서버 데이터 미확인 배지', () => {
     const d = makeDetection({
       module: 'network',
-      evidence: { type: 'network_analysis', detail: { reason: 'no_server_response_for_tab' } },
+      evidence: { type: 'network_analysis', raw: '', detail: { reason: 'no_server_response_for_tab' } },
     });
     const html = renderNetworkVerdict(d);
     expect(html).toContain('net-verdict-unverified');
@@ -128,7 +128,7 @@ describe('renderNetworkVerdict', () => {
   it('network_analysis + 알 수 없는 reason → 빈 문자열', () => {
     const d = makeDetection({
       module: 'network',
-      evidence: { type: 'network_analysis', detail: { reason: 'unknown_reason' } },
+      evidence: { type: 'network_analysis', raw: '', detail: { reason: 'unknown_reason' } },
     });
     expect(renderNetworkVerdict(d)).toBe('');
   });
@@ -264,13 +264,15 @@ describe('renderCard', () => {
   });
 
   it('xpath 없으면 card-clickable 없음', () => {
-    const card = renderCard(makeDetection({ element: undefined }), 1);
+    // element 필드를 아예 제외한 탐지 객체 생성
+    const { element: _unused, ...base } = makeDetection();
+    const card = renderCard(base as DarkPatternDetection, 1);
     expect(card.classList.contains('card-clickable')).toBe(false);
   });
 
   it('xpath 있으면 card-clickable 추가', () => {
     const card = renderCard(
-      makeDetection({ element: { xpath: '//div', boundingRect: { top: 0, left: 0, width: 100, height: 20 } } }),
+      makeDetection({ element: { xpath: '//div', outerHTML: '<div/>', boundingRect: { top: 0, left: 0, width: 100, height: 20 } } }),
       1,
     );
     expect(card.classList.contains('card-clickable')).toBe(true);
@@ -279,7 +281,7 @@ describe('renderCard', () => {
   it('xpath 있고 카드 클릭 시 SCROLL_TO_ELEMENT 메시지 전송', () => {
     const sendMessage = chrome.tabs.sendMessage as ReturnType<typeof vi.fn>;
     const card = renderCard(
-      makeDetection({ element: { xpath: '//div[@id="target"]', boundingRect: { top: 0, left: 0, width: 100, height: 20 } } }),
+      makeDetection({ element: { xpath: '//div[@id="target"]', outerHTML: '<div/>', boundingRect: { top: 0, left: 0, width: 100, height: 20 } } }),
       42,
     );
     card.click();
@@ -298,7 +300,8 @@ describe('renderCard', () => {
 
   it('공정위 버튼 클릭 시 새 탭 열기', () => {
     const create = chrome.tabs.create as ReturnType<typeof vi.fn>;
-    const card = renderCard(makeDetection(), 1);
+    const { element: _unused, ...base } = makeDetection();
+    const card = renderCard(base as DarkPatternDetection, 1);
     const btn = card.querySelector<HTMLButtonElement>('.ftc-link')!;
     btn.click();
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ url: expect.stringContaining('ftc.go.kr') }));

@@ -4,7 +4,8 @@
     "rootDir": ".",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "types": ["vitest/globals"]
+    "skipLibCheck": true,
+    "types": ["vitest/globals", "chrome"]
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]
