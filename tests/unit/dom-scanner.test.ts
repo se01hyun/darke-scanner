@@ -270,3 +270,401 @@ describe('탐지 결과 DarkPatternDetection 구조', () => {
     expect(dets).toHaveLength(0);
   });
 });
+
+// ── 기준 7: 위장광고 ─────────────────────────────────────────────────────────
+
+describe('detectDisguisedAds — 기준 7', () => {
+  it('[data-ad] 요소 + 광고 고지 없음 → confirmed 탐지', () => {
+    const dets = runScan('<div data-ad><img src="banner.jpg"><p>지금 구매하세요</p></div>');
+    const det = dets.find(d => d.guideline === 7);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('confirmed');
+    expect(det!.module).toBe('dom');
+  });
+
+  it('[data-adunit] 요소도 탐지', () => {
+    const dets = runScan('<div data-adunit="slot-1">특가 상품</div>');
+    expect(dets.some(d => d.guideline === 7)).toBe(true);
+  });
+
+  it('인접 형제에 "광고" 텍스트가 있으면 정상 고지 → 스킵', () => {
+    // 인접 형제의 직계 텍스트에 "광고" 포함 → 정상 표시로 판단
+    const dets = runScan(
+      '<div>' +
+      '  <span>광고</span>' +
+      '  <div data-ad>배너 내용</div>' +
+      '</div>',
+    );
+    expect(dets.filter(d => d.guideline === 7)).toHaveLength(0);
+  });
+
+  it('title 속성에 "광고" 레이블 있으면 스킵', () => {
+    const dets = runScan('<div data-ad title="광고">배너 내용</div>');
+    expect(dets.filter(d => d.guideline === 7)).toHaveLength(0);
+  });
+
+  it('숨겨진 광고 요소(0x0)는 스킵', () => {
+    document.body.innerHTML = '<div data-ad id="ad-el">배너</div>';
+    const el = document.querySelector<HTMLElement>('[data-ad]')!;
+    el.getBoundingClientRect = () => ({
+      width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0, x: 0, y: 0,
+      toJSON: () => ({}),
+    });
+    new DOMScanner().init();
+    expect(getSentDetections().filter(d => d.guideline === 7)).toHaveLength(0);
+  });
+});
+
+// ── 기준 4: 거짓할인 ─────────────────────────────────────────────────────────
+
+describe('detectFalseDiscount — 기준 4', () => {
+  it('할인율 표시 + 원가 없음 → suspicious 탐지', () => {
+    // <del> 없이 할인율만 표시
+    const dets = runScan('<p>50% 할인 지금 구매하세요!</p>');
+    const det = dets.find(d => d.guideline === 4);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('suspicious');
+    expect(det!.module).toBe('dom');
+  });
+
+  it('50% 이상 할인 → severity high', () => {
+    const dets = runScan('<p>70% 할인 특가</p>');
+    const det = dets.find(d => d.guideline === 4);
+    expect(det!.severity).toBe('high');
+  });
+
+  it('49% 할인 → severity medium', () => {
+    const dets = runScan('<p>30% 할인 이벤트</p>');
+    const det = dets.find(d => d.guideline === 4);
+    expect(det!.severity).toBe('medium');
+  });
+
+  it('[class*=discount-rate] 선택자 기반 탐지', () => {
+    const dets = runScan('<span class="discount-rate">30% 할인</span>');
+    expect(dets.some(d => d.guideline === 4)).toBe(true);
+  });
+
+  it('원가(<del>) 있으면 정상 할인으로 스킵', () => {
+    const dets = runScan(
+      '<div class="product-price">' +
+      '  <del>50,000원</del>' +
+      '  <span>50% 할인</span>' +
+      '</div>',
+    );
+    expect(dets.filter(d => d.guideline === 4)).toHaveLength(0);
+  });
+
+  it('SALE 영문 패턴도 탐지', () => {
+    const dets = runScan('<p>30% SALE</p>');
+    expect(dets.some(d => d.guideline === 4)).toBe(true);
+  });
+});
+
+// ── 기준 12: 숨겨진 정보 ─────────────────────────────────────────────────────
+
+describe('detectHiddenInformation — 기준 12', () => {
+  it('자동갱신 키워드 + 작은 폰트(8px) → 탐지', () => {
+    const dets = runScan('<p><span style="font-size:8px">자동갱신 조건 적용</span></p>');
+    const det = dets.find(d => d.guideline === 12);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('suspicious');
+  });
+
+  it('8px 이하 → severity high', () => {
+    const dets = runScan('<span style="font-size:7px">환불 불가 조건 적용</span>');
+    const det = dets.find(d => d.guideline === 12);
+    expect(det!.severity).toBe('high');
+  });
+
+  it('9px ~ 11px → severity medium', () => {
+    const dets = runScan('<span style="font-size:10px">수수료 별도 청구</span>');
+    const det = dets.find(d => d.guideline === 12);
+    expect(det!.severity).toBe('medium');
+  });
+
+  it('12px 이상 폰트는 탐지하지 않음', () => {
+    const dets = runScan('<span style="font-size:16px">자동갱신 조건 안내</span>');
+    expect(dets.filter(d => d.guideline === 12)).toHaveLength(0);
+  });
+
+  it('위약금 키워드도 탐지', () => {
+    const dets = runScan('<small style="font-size:9px">위약금 발생 시 전액 청구됩니다</small>');
+    expect(dets.some(d => d.guideline === 12)).toBe(true);
+  });
+});
+
+// ── 기준 11: 취소·탈퇴 방해 ──────────────────────────────────────────────────
+
+describe('detectHardToCancel — 기준 11', () => {
+  it('display:none 해지 링크 → confirmed 탐지', () => {
+    const dets = runScan('<a href="#" style="display:none">해지하기</a>');
+    const det = dets.find(d => d.guideline === 11);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('confirmed');
+    expect(det!.module).toBe('dom');
+  });
+
+  it('visibility:hidden 탈퇴 버튼 → confirmed 탐지', () => {
+    const dets = runScan('<button style="visibility:hidden">탈퇴</button>');
+    expect(dets.some(d => d.guideline === 11)).toBe(true);
+  });
+
+  it('opacity:0.3 구독취소 버튼 → suspicious 탐지', () => {
+    const dets = runScan('<button style="opacity:0.3">구독취소</button>');
+    const det = dets.find(d => d.guideline === 11);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('suspicious');
+  });
+
+  it('신호 2개 이상 → severity high', () => {
+    // display:none + opacity 모두 신호로 잡히지만 display:none 하나면 1신호
+    // → 두 번째 신호는 opacity로 추가
+    const dets = runScan('<a style="display:none;opacity:0.2">구독 취소</a>');
+    // display:none 신호 1개 + opacity 신호 1개 = 2개 → high
+    const det = dets.find(d => d.guideline === 11);
+    expect(det!.severity).toBe('high');
+  });
+
+  it('일반 본문 "해지" 텍스트(비액션 요소)는 탐지하지 않음', () => {
+    const dets = runScan('<p>해지 방법을 안내해 드립니다.</p>');
+    expect(dets.filter(d => d.guideline === 11)).toHaveLength(0);
+  });
+});
+
+// ── 기준 13: 가격비교 방해 ───────────────────────────────────────────────────
+
+describe('detectComparisonPrevention — 기준 13', () => {
+  it('product 컨텍스트 내 "가격문의" → 탐지', () => {
+    const dets = runScan(
+      '<div class="product-list"><p>가격문의</p></div>',
+    );
+    const det = dets.find(d => d.guideline === 13);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('suspicious');
+    expect(det!.module).toBe('dom');
+  });
+
+  it('"별도문의" 패턴도 탐지', () => {
+    const dets = runScan('<div class="goods-card"><span>별도문의</span></div>');
+    expect(dets.some(d => d.guideline === 13)).toBe(true);
+  });
+
+  it('상품 컨텍스트 없이 단독 노출은 스킵', () => {
+    // 네비게이션이나 본문 등 상품 컨텍스트 밖에서는 오탐 방지
+    const dets = runScan('<nav><p>가격문의</p></nav>');
+    expect(dets.filter(d => d.guideline === 13)).toHaveLength(0);
+  });
+
+  it('"전화문의" 패턴 탐지', () => {
+    const dets = runScan('<div class="item-price"><p>전화문의</p></div>');
+    expect(dets.some(d => d.guideline === 13)).toBe(true);
+  });
+});
+
+// ── 기준 15: 반복간섭 ────────────────────────────────────────────────────────
+
+describe('detectNagging — 기준 15', () => {
+  it('dialog[open] + CTA 키워드 → confirmed 탐지', () => {
+    const dets = runScan('<dialog open><p>구독하기 — 지금 가입하세요</p></dialog>');
+    const det = dets.find(d => d.guideline === 15);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('confirmed');
+    expect(det!.module).toBe('dom');
+  });
+
+  it('[role=dialog] + FOMO 키워드 → suspicious 탐지 (CTA 없음)', () => {
+    const dets = runScan(
+      '<div role="dialog"><p>마감 임박! 지금 확인하세요</p></div>',
+    );
+    const det = dets.find(d => d.guideline === 15);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('suspicious');
+  });
+
+  it('CTA + FOMO 동시 → severity high', () => {
+    const dets = runScan(
+      '<dialog open><p>혜택받기 마감 임박!</p></dialog>',
+    );
+    const det = dets.find(d => d.guideline === 15);
+    expect(det!.severity).toBe('high');
+  });
+
+  it('CTA/FOMO 없는 dialog는 탐지하지 않음', () => {
+    const dets = runScan('<dialog open><p>배송 정보를 확인해 주세요.</p></dialog>');
+    expect(dets.filter(d => d.guideline === 15)).toHaveLength(0);
+  });
+
+  it('숨겨진 dialog(0x0)는 탐지하지 않음', () => {
+    document.body.innerHTML = '<dialog open id="dlg"><p>구독하기</p></dialog>';
+    const el = document.querySelector<HTMLElement>('dialog')!;
+    el.getBoundingClientRect = () => ({
+      width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0, x: 0, y: 0,
+      toJSON: () => ({}),
+    });
+    new DOMScanner().init();
+    expect(getSentDetections().filter(d => d.guideline === 15)).toHaveLength(0);
+  });
+});
+
+// ── 기준 6: 유인판매 ─────────────────────────────────────────────────────────
+
+describe('detectBaitAndSwitch — 기준 6', () => {
+  it('[class*=soldout] + product 컨텍스트 + 대체 유도 → 탐지', () => {
+    const dets = runScan(
+      '<div class="product-detail">' +
+      '  <div class="soldout">품절</div>' +
+      '  <p>대신 이 제품은 어떠세요?</p>' +
+      '</div>',
+    );
+    const det = dets.find(d => d.guideline === 6);
+    expect(det).toBeDefined();
+    expect(det!.severity).toBe('high');
+    expect(det!.module).toBe('dom');
+  });
+
+  it('텍스트 기반: "품절" + "유사상품" in product ctx → 탐지', () => {
+    const dets = runScan(
+      '<div class="goods-item"><p>품절 — 유사상품을 추천합니다</p></div>',
+    );
+    expect(dets.some(d => d.guideline === 6)).toBe(true);
+  });
+
+  it('리뷰 영역 내 품절 언급은 스킵 (오탐 방지)', () => {
+    const dets = runScan(
+      '<div class="product-detail">' +
+      '  <div class="review-area">' +
+      '    <p>품절됐을 때 대신 구매했어요</p>' +
+      '  </div>' +
+      '</div>',
+    );
+    expect(dets.filter(d => d.guideline === 6)).toHaveLength(0);
+  });
+
+  it('"관련상품" 대체 유도도 탐지', () => {
+    const dets = runScan(
+      '<div class="product-info">' +
+      '  <span class="soldout">품절</span>' +
+      '  <a>관련상품 보기</a>' +
+      '</div>',
+    );
+    expect(dets.some(d => d.guideline === 6)).toBe(true);
+  });
+});
+
+// ── 기준 2: 순차공개 가격책정 (DOM 경로) ────────────────────────────────────
+
+describe('detectDripPricingDOM — 기준 2 (DOM)', () => {
+  // jsdom CSS 선택자가 single-quote attribute를 파싱하지 못하는 경우가 있으므로
+  // CSS 선택자 경로 대신 텍스트 노드 기반 탐지 경로로 커버한다.
+
+  it('display:none 숨겨진 배송비 → high/confirmed 탐지', () => {
+    const dets = runScan('<p style="display:none">배송비 3,000원</p>');
+    const det = dets.find(d => d.guideline === 2 && d.module === 'dom');
+    expect(det).toBeDefined();
+    expect(det!.severity).toBe('high');
+    expect(det!.confidence).toBe('confirmed');
+  });
+
+  it('소자(8px) 배송비 표기 → suspicious 탐지', () => {
+    const dets = runScan('<p style="font-size:8px">배송비 2,500원 별도 부과</p>');
+    const det = dets.find(d => d.guideline === 2 && d.module === 'dom');
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('suspicious');
+    expect(det!.severity).toBe('medium');
+  });
+
+  it('"무료 배송"은 탐지하지 않음 (무료 배송비는 드립 프라이싱 아님)', () => {
+    // 화면에 무료 배송이 표시 → visibleTerms에 추가 → 숨겨진 복사본도 스킵
+    // 여기서는 단순히 보이는 "무료 배송"만 있는 경우 탐지 없음 확인
+    const dets = runScan('<p>무료 배송 이벤트 진행 중</p>');
+    expect(dets.filter(d => d.guideline === 2 && d.module === 'dom')).toHaveLength(0);
+  });
+
+  it('visibility:hidden 수수료 → 탐지', () => {
+    const dets = runScan('<span style="visibility:hidden">결제수수료 1,000원</span>');
+    expect(dets.some(d => d.guideline === 2 && d.module === 'dom')).toBe(true);
+  });
+});
+
+// ── 기준 14: 클릭 피로감 유발 ────────────────────────────────────────────────
+
+describe('detectClickFatigue — 기준 14', () => {
+  it('5단계 이상 체크아웃 단계 → 탐지', () => {
+    const dets = runScan(
+      '<ol class="checkout-step">' +
+      '  <li>장바구니</li><li>배송</li><li>결제</li><li>확인</li><li>완료</li>' +
+      '</ol>',
+    );
+    const det = dets.find(d => d.guideline === 14);
+    expect(det).toBeDefined();
+    expect(det!.module).toBe('dom');
+  });
+
+  it('7단계 이상 → severity high', () => {
+    const li = '<li>단계</li>'.repeat(7);
+    const dets = runScan(`<ol class="order-step">${li}</ol>`);
+    const det = dets.find(d => d.guideline === 14);
+    expect(det!.severity).toBe('high');
+  });
+
+  it('4단계 이하는 탐지하지 않음', () => {
+    const dets = runScan(
+      '<ol class="order-step">' +
+      '  <li>1</li><li>2</li><li>3</li><li>4</li>' +
+      '</ol>',
+    );
+    expect(dets.filter(d => d.guideline === 14)).toHaveLength(0);
+  });
+
+  it('동의 팝업 내 8개 이상 체크박스 → 탐지', () => {
+    const checkboxes = '<input type="checkbox">'.repeat(8);
+    const dets = runScan(
+      `<dialog open>약관 동의 필요${checkboxes}</dialog>`,
+    );
+    const det = dets.find(d => d.guideline === 14);
+    expect(det).toBeDefined();
+  });
+
+  it('동의 팝업 체크박스 7개 이하는 탐지하지 않음', () => {
+    const checkboxes = '<input type="checkbox">'.repeat(7);
+    const dets = runScan(`<dialog open>약관 동의${checkboxes}</dialog>`);
+    expect(dets.filter(d => d.guideline === 14)).toHaveLength(0);
+  });
+});
+
+// ── 기준 9: 잘못된 계층구조 (취소 버튼 시각적 약화) ─────────────────────────
+
+describe('detectVisuallyWeakenedCancel — 기준 9', () => {
+  it('opacity 낮은 취소 버튼 → suspicious 탐지', () => {
+    // opacity:0.5 < OPACITY_THRESHOLD(0.70) → 신호 1개 → detected
+    const dets = runScan(
+      '<div>' +
+      '  <button>동의</button>' +
+      '  <button style="opacity:0.5">취소</button>' +
+      '</div>',
+    );
+    const det = dets.find(d => d.guideline === 9);
+    expect(det).toBeDefined();
+    expect(det!.confidence).toBe('suspicious');
+    expect(det!.module).toBe('dom');
+  });
+
+  it('신호 1개 → severity low', () => {
+    const dets = runScan(
+      '<div><button>확인</button><button style="opacity:0.3">아니요</button></div>',
+    );
+    expect(dets.find(d => d.guideline === 9)!.severity).toBe('low');
+  });
+
+  it('취소 버튼과 동의 버튼이 없으면 탐지하지 않음', () => {
+    const dets = runScan('<div><button>다음</button><button>이전</button></div>');
+    expect(dets.filter(d => d.guideline === 9)).toHaveLength(0);
+  });
+
+  it('opacity 정상(0.9)은 탐지하지 않음', () => {
+    const dets = runScan(
+      '<div><button>동의</button><button style="opacity:0.9">취소</button></div>',
+    );
+    expect(dets.filter(d => d.guideline === 9)).toHaveLength(0);
+  });
+});
