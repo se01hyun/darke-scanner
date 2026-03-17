@@ -5,7 +5,7 @@
 //   2) SharedArrayBuffer 미지원 등으로 실패 시 chrome.offscreen API 경유
 
 import * as ort from 'onnxruntime-web';
-import { tokenize, cosineSim, MAX_SEQ_LEN } from './tokenizer';
+import { initTokenizer, tokenize, cosineSim, MAX_SEQ_LEN } from './tokenizer';
 import { HIDDEN_SIZE, meanPool, softmaxHighClass } from './onnx-utils';
 
 export class OnnxSession {
@@ -74,6 +74,10 @@ export class OnnxSession {
     ort.env.wasm.wasmPaths = chrome.runtime.getURL('');
     // MV3 Service Worker: 멀티스레드 비활성화 (SharedArrayBuffer 제한)
     ort.env.wasm.numThreads = 1;
+
+    // WordPiece vocab 초기화 (모델과 함께 로드)
+    const vocabUrl = chrome.runtime.getURL('koelectra-vocab.json');
+    await initTokenizer(vocabUrl);
 
     this.session = await ort.InferenceSession.create(modelUrl, {
       executionProviders: ['wasm'],

@@ -11,7 +11,7 @@
 //   ← { score: number }
 
 import * as ort from 'onnxruntime-web';
-import { tokenize, MAX_SEQ_LEN } from '../nlp/tokenizer';
+import { initTokenizer, tokenize, MAX_SEQ_LEN } from '../nlp/tokenizer';
 import { HIDDEN_SIZE, meanPool, softmaxHighClass } from '../nlp/onnx-utils';
 
 const MODEL_FILENAME = 'models/koelectra-fomo.onnx';
@@ -23,6 +23,10 @@ async function getSession(): Promise<ort.InferenceSession> {
 
   const modelUrl = chrome.runtime.getURL(MODEL_FILENAME);
   ort.env.wasm.wasmPaths = chrome.runtime.getURL('');
+
+  // WordPiece vocab 초기화 (세션과 함께 로드)
+  const vocabUrl = chrome.runtime.getURL('koelectra-vocab.json');
+  await initTokenizer(vocabUrl);
 
   session = await ort.InferenceSession.create(modelUrl, {
     executionProviders: ['wasm'],
