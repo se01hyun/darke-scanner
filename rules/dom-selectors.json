@@ -65,6 +65,7 @@
     "disguised_ads": [
       "[data-ad]",
       "[data-adunit]",
+      "[data-ad-unit]",
       "[data-ad-slot]",
       "[data-ad-client]",
       "[data-google-query-id]",

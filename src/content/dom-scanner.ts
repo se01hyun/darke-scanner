@@ -101,7 +101,7 @@ const CANCEL_FONT_THRESHOLD    = 12; // px
 // ─── 가이드라인 13: 가격비교 방해 상수 ───────────────────────────────────────
 const COMPARISON_PREVENTION_TERMS = [
   '가격문의', '가격 문의', '가격협의', '가격 협의',
-  '별도문의', '별도 문의', '문의바람', '협의요망', '전화문의',
+  '별도문의', '별도 문의', '문의바람', '협의요망', '전화문의', '전화 문의',
 ];
 
 // ─── 가이드라인 15: 반복간섭 상수 ────────────────────────────────────────────
@@ -521,19 +521,24 @@ export class DOMScanner {
   }
 
   /**
-   * 광고 요소 주변(자신 + 부모 1단계 + 이전/다음 형제)의 텍스트를 수집한다.
-   * 광고 고지 텍스트는 보통 광고 컨테이너 바로 위·옆에 위치하기 때문이다.
+   * 광고 요소 주변(인접 형제 + 부모의 다른 자식)의 텍스트를 수집한다.
+   * 광고 고지 텍스트는 광고 컨테이너 바깥(라벨·캡션)에 위치해야 유효하다.
+   * 요소 자신의 텍스트는 제외한다 — "광고 표시 생략" 같은 내부 문구를
+   * 정상 고지로 오판하는 것을 방지하기 위함이다.
    */
   private getAdDisclosureArea(el: HTMLElement): string {
     const parts: string[] = [];
-    parts.push(el.textContent ?? '');
-    if (el.parentElement) {
-      parts.push(el.parentElement.textContent ?? '');
-    }
+    // 이전·다음 형제 요소
     const prev = el.previousElementSibling;
     const next = el.nextElementSibling;
     if (prev) parts.push(prev.textContent ?? '');
     if (next) parts.push(next.textContent ?? '');
+    // 부모의 다른 자식들 (el 자신 제외)
+    if (el.parentElement) {
+      Array.from(el.parentElement.children).forEach((child) => {
+        if (child !== el) parts.push(child.textContent ?? '');
+      });
+    }
     return parts.join(' ');
   }
 
@@ -745,7 +750,8 @@ export class DOMScanner {
 
       // 상품 카드·목록 컨텍스트 확인 (네비게이션·CS 문구 제외)
       const productCtx = parent.closest(
-        '[class*="product"],[class*="item"],[class*="goods"],[class*="card"],[class*="list"]',
+        '[class*="product"],[class*="item"],[class*="goods"],[class*="card"],[class*="list"],' +
+        '[class*="comparison"],[class*="price"],[class*="inquiry"],[class*="contact"]',
       );
       if (!productCtx) continue;
       count++;
