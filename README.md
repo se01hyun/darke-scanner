@@ -44,12 +44,48 @@
 ## 아키텍처
 
 ```
-Content Script          Background Worker         UI
-─────────────────       ───────────────────       ────────────
-DOM Scanner       ─┐
-Network Sniffer   ─┼──→  Rule Engine        ──→  Popup (팝업 리포트)
-Script Analyzer   ─┤     NLP Analyzer            Overlay (DOM 하이라이트)
-Text Collector    ─┘     Network Sniffer          배지 (탐지 건수)
+┌─────────────────────────────────────────────────────────────────┐
+│                         웹 페이지 (탭)                            │
+│                                                                 │
+│  ┌──────────────────────────────────┐  ┌─────────────────────┐  │
+│  │      Content Script              │  │  Page Overlay       │  │
+│  │  (content.js)                    │  │  (overlay.js)       │  │
+│  │                                  │  │                     │  │
+│  │  ┌────────────┐ ┌─────────────┐  │  │  Shadow DOM 기반     │  │
+│  │  │ DOMScanner │ │TextCollector│  │  │  하이라이트 + 툴팁    │  │
+│  │  └────────────┘ └─────────────┘  │  │                     │  │
+│  │  ┌──────────────┐ ┌───────────┐  │  └─────────────────────┘  │
+│  │  │NetworkInter- │ │ScriptAna- │  │                           │
+│  │  │  ceptor      │ │  lyzer    │  │                           │
+│  │  └──────────────┘ └───────────┘  │                           │
+│  └──────────────────────────────────┘                           │
+│           │  chrome.runtime.sendMessage                         │
+│           ▼                                                     │
+└─────────────────────────────────────────────────────────────────┘
+           │
+           │  (IPC — chrome.runtime messaging)
+           │
+┌──────────▼──────────────────────────────────┐
+│           Background Service Worker         │
+│           (background.js)                   │
+│                                             │
+│  ┌──────────────┐  ┌──────────────────────┐ │
+│  │ NetworkSniffer│  │    NLPAnalyzer        │  │
+│  └──────────────┘  │  ┌────────────────┐  │ │
+│  ┌──────────────┐  │  │ KeywordMatcher │  │ │
+│  │  RuleEngine  │  │  │ PressureScorer │  │ │
+│  └──────────────┘  │  │ ReviewAnalyzer │  │ │
+│                    │  │ OnnxSession    │  │ │
+│  chrome.storage    │  └────────────────┘  │ │
+│  .session          └──────────────────────┘ │
+└─────────────────────────────────────────────┘
+           │  chrome.runtime.sendMessage (SCAN_COMPLETE)
+           ▼
+┌─────────────────────┐
+│   Popup UI          │
+│   (popup.html/js)   │
+│   탐지 결과 목록 표시  │
+└─────────────────────┘
 ```
 
 ### 탐지 모듈
