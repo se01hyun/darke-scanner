@@ -131,15 +131,20 @@ function resolveXPath(xpath: string): HTMLElement | null {
 
 // ── OverlayManager ────────────────────────────────────────────────────────────
 
+interface BoundingRect { top: number; left: number; width: number; height: number; }
+
 interface HighlightEntry {
   xpath: string;
-  el: HTMLElement;    // .highlight div (Shadow DOM 내부)
+  el: HTMLElement;          // .highlight div (Shadow DOM 내부)
+  boundingRect: BoundingRect; // 스캔 시점 절대 좌표 (XPath 실패 시 fallback)
 }
 
 class OverlayManager {
   private readonly root: ShadowRoot;
   private entries: HighlightEntry[] = [];
   private rafPending = false;
+  private retryCount = 0;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     const host = document.createElement('dark-scanner-overlay');
@@ -170,6 +175,8 @@ class OverlayManager {
   render(detections: DarkPatternDetection[]): void {
     for (const { el } of this.entries) el.remove();
     this.entries = [];
+    this.retryCount = 0;
+    if (this.retryTimer) { clearTimeout(this.retryTimer); this.retryTimer = null; }
 
     for (const d of detections) {
       // element 정보가 없는 탐지(네트워크/NLP 전용)는 overlay 표시 불가
@@ -177,7 +184,11 @@ class OverlayManager {
 
       const el = this.buildHighlight(d);
       this.root.appendChild(el);
-      this.entries.push({ xpath: d.element.xpath, el });
+      this.entries.push({
+        xpath: d.element.xpath,
+        el,
+        boundingRect: d.element.boundingRect,
+      });
     }
 
     this.repositionAll();
@@ -217,32 +228,52 @@ class OverlayManager {
   // 스크롤/리사이즈 시 XPath로 요소를 다시 찾아 fixed 좌표를 갱신한다.
 
   private repositionAll(): void {
-    for (const { xpath, el } of this.entries) {
+    let needsRetry = false;
+
+    for (const { xpath, el, boundingRect } of this.entries) {
       const target = resolveXPath(xpath);
-      if (!target) {
-        el.style.display = 'none';
-        continue;
+
+      let top: number, left: number, width: number, height: number;
+      let usingFallback = false;
+
+      if (target) {
+        const r = target.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) {
+          // 아직 렌더링 안 된 요소 — fallback으로 시도
+          usingFallback = true;
+        } else {
+          top = r.top; left = r.left; width = r.width; height = r.height;
+        }
+      } else {
+        // XPath 실패(동적 DOM 변경 등) — fallback으로 시도
+        usingFallback = true;
       }
 
-      const r = target.getBoundingClientRect();
-
-      // 크기 0이면 숨김 (아직 렌더링 안 된 요소 등)
-      if (r.width === 0 && r.height === 0) {
-        el.style.display = 'none';
-        continue;
+      if (usingFallback) {
+        if (boundingRect.width > 0 && boundingRect.height > 0) {
+          // 스캔 시점의 절대 좌표를 현재 스크롤 위치 기준 fixed 좌표로 변환
+          top    = boundingRect.top  - window.scrollY;
+          left   = boundingRect.left - window.scrollX;
+          width  = boundingRect.width;
+          height = boundingRect.height;
+        } else {
+          el.style.display = 'none';
+          needsRetry = true;
+          continue;
+        }
       }
 
-      el.style.top     = `${r.top}px`;
-      el.style.left    = `${r.left}px`;
-      el.style.width   = `${r.width}px`;
-      el.style.height  = `${r.height}px`;
+      el.style.top     = `${top!}px`;
+      el.style.left    = `${left!}px`;
+      el.style.width   = `${width!}px`;
+      el.style.height  = `${height!}px`;
       el.style.display = '';   // CSS 기본값(block) 복원
 
       // 툴팁 방향: 하단 공간이 170px 미만이고 상단에 여유가 있으면 위쪽으로
       const tooltip = el.querySelector<HTMLElement>('.tooltip');
       if (tooltip) {
-        const spaceBelow = window.innerHeight - r.bottom;
-        if (spaceBelow < 170 && r.top > 170) {
+        const spaceBelow = window.innerHeight - top! - height!;
+        if (spaceBelow < 170 && top! > 170) {
           tooltip.style.top    = '';
           tooltip.style.bottom = 'calc(100% + 6px)';
         } else {
@@ -250,6 +281,15 @@ class OverlayManager {
           tooltip.style.bottom = '';
         }
       }
+    }
+
+    // 숨겨진 요소가 있으면 1초 후 재시도 (최대 5회)
+    if (needsRetry && this.retryCount < 5) {
+      this.retryCount++;
+      this.retryTimer = setTimeout(() => {
+        this.retryTimer = null;
+        this.repositionAll();
+      }, 1000);
     }
   }
 
