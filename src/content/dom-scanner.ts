@@ -9,6 +9,18 @@ import { logger } from '../utils/debug-logger';
 import domSelectors from '../../rules/dom-selectors.json';
 import fomoKeywords from '../../rules/fomo-keywords.json';
 
+// ── TreeWalker 헬퍼 ──────────────────────────────────────────────────────────
+// <script>, <style>, <noscript>, <template> 내부 텍스트는 화면에 표시되지 않으므로
+// 모든 텍스트 노드 순회 시 이 태그를 부모로 갖는 노드는 처음부터 필터링한다.
+const INVISIBLE_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE']);
+function makeTextWalker(): TreeWalker {
+  return document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    { acceptNode: (n) => INVISIBLE_TAGS.has(n.parentElement?.tagName ?? '') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT },
+  );
+}
+
 // ─── 가이드라인 12: 취소 버튼 시각적 약화 상수 ──────────────────────────────
 // 텍스트에 포함된 단어로 버튼 역할을 분류
 const ACCEPT_KEYWORDS = ['동의', '확인', '구매', '결제', '신청', '시작', '계속', '주문', '구독', '동의하기', '확인하기'];
@@ -145,7 +157,9 @@ const DRIP_HIDDEN_FONT_THRESHOLD = 10;
 
 // ─── 가이드라인 19: 다른 소비자 활동 알림 상수 ────────────────────────────────
 // "현재 N명이 보고 있습니다", "방금 구매했습니다" 등 실시간 활동 패턴
-const SOCIAL_PROOF_RE = /(?:현재|지금|방금|오늘|최근)\s*\d*\s*명?\s*(?:이|가)?\s*(?:보고\s*있|구경\s*중|조회\s*중|구매(?:했|완료)|주문(?:했|완료)|담았|관심)/;
+// 판매자의 소셜 프루프 배너는 반드시 인원 단위('명')를 포함한다.
+// '명' 없이 '방금구매했는데' 처럼 고객 본인이 서술하는 문장은 탐지하지 않는다.
+const SOCIAL_PROOF_RE = /(?:현재|지금|방금|오늘|최근)\s*\d*\s*명\s*(?:이|가)?\s*(?:보고\s*있|구경\s*중|조회\s*중|구매(?:했|완료)|주문(?:했|완료)|담았|관심)/;
 const SOCIAL_PROOF_NUMBER_RE = /\d+\s*명\s*(?:이|가)?\s*(?:함께\s*)?(?:구경|보는|보고|구매한?|주문한?|담은|찜한?)/;
 
 // ─── 가이드라인 12: 숨겨진 정보 상수 ────────────────────────────────────────
@@ -332,7 +346,7 @@ export class DOMScanner {
 
     // 2) 텍스트 노드 키워드 스캔 (선택자 미매칭 케이스 보완)
     let textHitCount = 0;
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
 
     while ((node = walker.nextNode()) && textHitCount < MAX_TEXT_DETECTIONS) {
@@ -602,7 +616,7 @@ export class DOMScanner {
     const detections: DarkPatternDetection[] = [];
     const seen = new Set<Element>();
 
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
 
     while ((node = walker.nextNode())) {
@@ -703,7 +717,7 @@ export class DOMScanner {
     }
 
     // 2) 텍스트 기반 스캔 (선택자 미매칭 케이스 보완)
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
     let count = 0;
     while ((node = walker.nextNode()) && count < 10) {
@@ -724,7 +738,7 @@ export class DOMScanner {
     const detections: DarkPatternDetection[] = [];
     const seen = new Set<Element>();
 
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
 
     while ((node = walker.nextNode())) {
@@ -789,7 +803,7 @@ export class DOMScanner {
     const detections: DarkPatternDetection[] = [];
     const seen = new Set<Element>();
 
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
     let count = 0;
 
@@ -922,7 +936,7 @@ export class DOMScanner {
     }
 
     // 2) 텍스트 노드 기반 보완 탐지
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
     let count = 0;
 
@@ -1014,7 +1028,7 @@ export class DOMScanner {
     // 복사본을 드립 프라이싱으로 오탐하지 않기 위해 먼저 제외 목록을 만든다.
     const visibleTerms = new Set<string>();
     {
-      const preWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const preWalker = makeTextWalker();
       let preNode: Node | null;
       while ((preNode = preWalker.nextNode())) {
         const preText = preNode.textContent ?? '';
@@ -1032,7 +1046,7 @@ export class DOMScanner {
       }
     }
 
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
     let count = 0;
 
@@ -1133,7 +1147,7 @@ export class DOMScanner {
 
     // 2) 텍스트 패턴 보완: 요소 전체 텍스트에서 소비자 활동 패턴 탐지
     //    textContent를 사용하므로 자식 요소에 걸쳐 분산된 텍스트도 감지
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const walker = makeTextWalker();
     let node: Node | null;
     let count = 0;
 
