@@ -1,7 +1,9 @@
 node_modules/
 dist/
+coverage/
 models/*.onnx
 *.env
+.claude/settings.local.json
 
 # 루트에 남아 있을 수 있는 구 빌드 산물 (outdir이 dist/로 변경됨)
 /background.js
