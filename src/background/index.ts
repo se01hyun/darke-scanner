@@ -50,7 +50,12 @@ chrome.runtime.onMessage.addListener(
           }
         }
 
-        const networkDetection = tabId !== undefined
+        // DOM 스캐너가 기준 19 패턴을 실제로 탐지한 경우에만 서버 확인 여부를 체크한다.
+        // DOM 탐지 없이 항상 호출하면 실시간 수치가 없는 페이지에도 오탐이 발생한다.
+        const hasDomSocialProof = message.payload.some(
+          (d) => d.guideline === 19 && d.module === 'dom',
+        );
+        const networkDetection = (tabId !== undefined && hasDomSocialProof)
           ? sniffer.flagUnconfirmedDOMDetection(tabId)
           : null;
 
