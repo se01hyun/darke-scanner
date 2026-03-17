@@ -143,6 +143,8 @@ npm run build:prod
 | `npm run rebuild:prod` | clean + 프로덕션 빌드 |
 | `npm run typecheck` | TypeScript 타입 검사 (소스) |
 | `npm run typecheck:test` | TypeScript 타입 검사 (테스트 포함) |
+| `npm run lint` | ESLint 검사 |
+| `npm run lint:fix` | ESLint 자동 수정 |
 | `npm run test` | 단위 테스트 1회 실행 |
 | `npm run test:watch` | 파일 변경 감지 테스트 (개발 중) |
 | `npm run test:coverage` | 테스트 커버리지 리포트 생성 |

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { resolveXPath } from '../../src/overlay/index';
 
 // ── resolveXPath ───────────────────────────────────────────────────────────────

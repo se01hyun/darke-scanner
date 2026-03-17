@@ -14,14 +14,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck:test": "tsc -p tsconfig.test.json --noEmit"
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "lint": "eslint src/ tests/ --max-warnings 0",
+    "lint:fix": "eslint src/ tests/ --fix"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
     "@vitest/coverage-v8": "^4.1.0",
     "esbuild": "^0.20.0",
+    "eslint": "^10.0.3",
     "jsdom": "^29.0.0",
     "typescript": "^5.4.0",
+    "typescript-eslint": "^8.57.1",
     "vitest": "^4.1.0"
   },
   "dependencies": {
