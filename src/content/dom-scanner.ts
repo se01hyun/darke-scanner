@@ -26,7 +26,7 @@ const OPACITY_THRESHOLD = 0.70;
 const COUNTDOWN_TEXT_RE = /\d{1,2}:\d{2}(:\d{2})?/;
 
 // ─── 가이드라인 17: 카운트다운 소스 분석 ──────────────────────────────────────
-type TimerSource = 'server_driven' | 'client_reset' | 'client_only' | 'unknown';
+type TimerSource = 'server_driven' | 'client_reset' | 'client_only' | 'external_script' | 'unknown';
 
 /**
  * 카운트다운 요소가 서버 데이터 기반인지 순수 클라이언트 로직인지 판별한다.
@@ -36,7 +36,8 @@ type TimerSource = 'server_driven' | 'client_reset' | 'client_only' | 'unknown';
  *  2. 인라인 스크립트 내 타이머 만료 후 초기화 패턴 → 허위 긴박감 (client_reset)
  *  3. fetch() URL에 time/deadline/expire/remain 키워드 → 서버 연동 (server_driven)
  *  4. setInterval + 감소 연산, fetch 없음 → 순수 클라이언트 (client_only)
- *  5. 판별 불가 → unknown
+ *  5. 외부 스크립트만 존재 → CORS로 분석 불가 (external_script)
+ *  6. 판별 불가 → unknown
  */
 function analyzeTimerSource(el: HTMLElement): TimerSource {
   // 1. 서버 렌더링 data 속성 (data-end-time, data-deadline 등)
@@ -47,25 +48,32 @@ function analyzeTimerSource(el: HTMLElement): TimerSource {
   if (hasServerAttr) return 'server_driven';
 
   // 인라인 스크립트 전체 수집
-  const src = Array.from(document.querySelectorAll<HTMLScriptElement>('script:not([src])'))
+  const inlineSrc = Array.from(document.querySelectorAll<HTMLScriptElement>('script:not([src])'))
     .map((s) => s.textContent ?? '')
     .join('\n');
-  if (!src) return 'unknown';
+
+  // 인라인 스크립트가 없고 외부 스크립트가 존재하면 CORS로 분석 불가
+  const hasExternalScripts = document.querySelectorAll('script[src]').length > 0;
+  if (!inlineSrc.trim() && hasExternalScripts) return 'external_script';
+  if (!inlineSrc.trim()) return 'unknown';
 
   // 2. 타이머 만료(≤0) 후 초기값 재할당 → 허위 긴박감 가장 강한 신호
   // 예: if (timer <= 0) timer = 300;  /  if (count === 0) count = resetVal;
-  if (/(?:<=|===|==)\s*0[\s\S]{0,100}=\s*\d{2,}/.test(src)) return 'client_reset';
+  if (/(?:<=|===|==)\s*0[\s\S]{0,100}=\s*\d{2,}/.test(inlineSrc)) return 'client_reset';
 
   // 3. fetch() URL에 시간 관련 키워드 포함 → 서버에서 마감 시한 수신
-  if (/fetch\s*\(\s*['"`][^'"`]*(?:time|timer|countdown|deadline|expire|remain)[^'"`]*['"`]/i.test(src)) {
+  if (/fetch\s*\(\s*['"`][^'"`]*(?:time|timer|countdown|deadline|expire|remain)[^'"`]*['"`]/i.test(inlineSrc)) {
     return 'server_driven';
   }
 
   // 4. setInterval/setTimeout + 감소 연산 (fetch 없음) → 순수 클라이언트
-  const hasInterval = /set(?:Interval|Timeout)\s*\(/.test(src);
-  const hasDecrement = /(?:--[\w$]+|[\w$]+\s*-=\s*1)/.test(src);
-  const hasFetch = /(?:fetch\s*\(|new\s+XMLHttpRequest|axios\s*\.)/.test(src);
+  const hasInterval = /set(?:Interval|Timeout)\s*\(/.test(inlineSrc);
+  const hasDecrement = /(?:--[\w$]+|[\w$]+\s*-=\s*1)/.test(inlineSrc);
+  const hasFetch = /(?:fetch\s*\(|new\s+XMLHttpRequest|axios\s*\.)/.test(inlineSrc);
   if (hasInterval && hasDecrement && !hasFetch) return 'client_only';
+
+  // 5. 인라인 스크립트는 있지만 패턴 미매칭 + 외부 스크립트도 존재
+  if (hasExternalScripts) return 'external_script';
 
   return 'unknown';
 }
@@ -215,11 +223,17 @@ export class DOMScanner {
                 confidence: 'suspicious',
                 description: '카운트다운 타이머가 서버 데이터와 연동된 것으로 보입니다. 실제 마감 시한일 가능성이 있으나 직접 확인을 권장합니다.',
               };
+            case 'external_script':
+              return {
+                severity: 'medium',
+                confidence: hasTimePattern ? 'confirmed' : 'suspicious',
+                description: '타이머 로직이 외부 스크립트에 있어 서버 연동 여부를 자동 판별할 수 없습니다 (브라우저 보안 정책으로 외부 JS 소스 접근 불가).',
+              };
             default:
               return {
                 severity: 'medium',
                 confidence: hasTimePattern ? 'confirmed' : 'suspicious',
-                description: '카운트다운 타이머가 감지되었습니다. HTML/JS 소스로 서버 연동 여부를 확인할 수 없습니다.',
+                description: '카운트다운 타이머가 감지되었습니다. 실제 마감 시한인지 확인이 필요합니다.',
               };
           }
         })();
