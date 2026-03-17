@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>결제하기 — 마켓테스트</title>
+  <style>
+    /* ================================================================
+       DARK PATTERN TEST PAGE — checkout.html
+       위반 가이드라인: G1, G2, G3, G10, G11, G14
+       ================================================================ */
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f5f5f5; color: #222; }
+
+    /* ── 레이아웃 ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+    .checkout-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; padding: 24px 0 60px; }
+    @media (max-width: 720px) { .checkout-layout { grid-template-columns: 1fr; } }
+
+    /* ── 헤더 ── */
+    header { background: #fff; border-bottom: 1px solid #eee; padding: 16px 0; }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.2rem; font-weight: 900; color: #1a1a2e; }
+    .secure-badge { font-size: 0.8rem; color: #27ae60; display: flex; align-items: center; gap: 4px; }
+
+    /* ══════════════════════════════════════════════════════
+       G14: 클릭 피로감 유발 (Click Fatigue)
+       선택자: ol[class*='step'], [class*='step-indicator'],
+               [class*='checkout-step'], [class*='wizard-step']
+    ══════════════════════════════════════════════════════ */
+    .step-bar { background: #fff; border-bottom: 1px solid #eee; padding: 16px 0; }
+    .step-indicator { /* G14 selector */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      list-style: none;
+      gap: 0;
+      font-size: 0.82rem;
+    }
+    .step-indicator li { display: flex; align-items: center; }
+    .step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; }
+    .step-label { padding: 0 8px; color: #888; white-space: nowrap; }
+    .step-indicator li.done .step-num   { background: #27ae60; color: #fff; }
+    .step-indicator li.active .step-num { background: #e74c3c; color: #fff; }
+    .step-indicator li.active .step-label { color: #e74c3c; font-weight: 700; }
+    .step-indicator li .step-num:not(.done):not(.active-num) { background: #e0e0e0; color: #999; }
+    .step-sep { width: 32px; height: 2px; background: #e0e0e0; margin: 0 4px; flex-shrink: 0; }
+    .step-sep.done { background: #27ae60; }
+
+    /* ── 섹션 카드 ── */
+    .section-card { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; padding: 24px; margin-bottom: 16px; }
+    .section-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #333; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+
+    /* ── 폼 ── */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .form-row.full { grid-template-columns: 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    label.form-label { font-size: 0.8rem; color: #666; }
+    input.form-input, select.form-input { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; font-size: 0.9rem; outline: none; }
+    input.form-input:focus, select.form-input:focus { border-color: #e74c3c; }
+
+    /* ══════════════════════════════════════════════════════
+       G3: 몰래 장바구니 추가 (Basket Sneaking)
+       G10: 특정옵션의 사전선택 (Preselection)
+       선택자: input[type='checkbox'][checked], input[type='radio'][checked]
+    ══════════════════════════════════════════════════════ */
+    .sneaked-items { display: flex; flex-direction: column; gap: 10px; }
+    .sneaked-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: #fafafa; border: 1px solid #eee; border-radius: 8px; }
+    .sneaked-item input[type='checkbox'] { margin-top: 3px; accent-color: #e74c3c; flex-shrink: 0; }
+    .sneaked-item label { font-size: 0.88rem; line-height: 1.5; cursor: pointer; }
+    .sneaked-item label .item-price { color: #e74c3c; font-weight: 700; }
+    .sneaked-item label small { display: block; color: #aaa; font-size: 0.75rem; }
+    /* 추가된 항목임을 알기 어렵게 배치 */
+    .sneaked-note { font-size: 0.7rem; color: #bbb; text-align: right; margin-top: 4px; }
+
+    /* ── 배송지 ── */
+    .addr-row { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
+    .btn-search-addr { background: #333; color: #fff; border: none; border-radius: 6px; padding: 10px 16px; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
+
+    /* ── 결제 수단 ── */
+    .payment-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .payment-opt { border: 1px solid #ddd; border-radius: 8px; padding: 12px 8px; text-align: center; font-size: 0.8rem; cursor: pointer; transition: border-color .2s; }
+    .payment-opt input { display: none; }
+    .payment-opt.selected { border-color: #e74c3c; background: #fff5f5; color: #e74c3c; font-weight: 700; }
+
+    /* 개인정보 과도 수집 동의 — G17(PRD 기준 Privacy Zuckering) 역할 -->
+    /* G10과 함께: 사전 선택된 개인정보 과도 동의 */
+    .consent-box { background: #fffbf0; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; }
+    .consent-box h4 { font-size: 0.85rem; color: #92400e; margin-bottom: 10px; }
+    .consent-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 0.82rem; line-height: 1.5; color: #555; }
+    .consent-item:last-child { margin-bottom: 0; }
+    .consent-item .consent-detail { font-size: 0.7rem; color: #aaa; margin-top: 2px; }
+
+    /* ══════════════════════════════════════════════════════
+       G2: 순차공개 가격책정 (Drip Pricing)
+       결제 직전 단계에서만 추가 비용 표시
+    ══════════════════════════════════════════════════════ */
+    .order-summary { position: sticky; top: 80px; }
+    .summary-card { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; padding: 24px; }
+    .summary-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+    .summary-item { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; font-size: 0.88rem; }
+    .summary-item .label { color: #666; }
+    .summary-item .value { font-weight: 600; color: #333; text-align: right; }
+    /* 처음에는 보이지 않다가 결제 클릭 시 등장하는 숨은 비용 */
+    .drip-fee { border-top: 1px dashed #eee; padding-top: 10px; margin-top: 6px; }
+    .drip-fee .drip-label { color: #e74c3c; font-size: 0.78rem; }
+    .drip-fee .value { color: #e74c3c; }
+    .total-row { border-top: 2px solid #333; padding-top: 12px; margin-top: 6px; }
+    .total-row .label { font-weight: 700; font-size: 1rem; }
+    .total-row .value { font-weight: 900; font-size: 1.3rem; color: #e74c3c; }
+    /* 원래 노출 가격 (상품 페이지에서 표시) */
+    .advertised-price { font-size: 0.75rem; color: #aaa; text-align: right; margin-top: 4px; }
+
+    /* G2: 처음엔 숨겨진 추가 비용 — JS로 '결제하기' 클릭 전에는 display:none */
+    .hidden-fees { display: none; }
+
+    .btn-pay { display: block; width: 100%; background: #e74c3c; color: #fff; border: none; border-radius: 8px; padding: 18px; font-size: 1.05rem; font-weight: 700; cursor: pointer; margin-top: 16px; }
+    .btn-pay:hover { background: #c0392b; }
+
+    /* ══════════════════════════════════════════════════════
+       G9: 잘못된 계층구조 — 취소/이전 버튼 시각적 약화
+    ══════════════════════════════════════════════════════ */
+    .btn-back-weak { display: block; width: 100%; background: none; border: none; color: #ccc; font-size: 0.72rem; cursor: pointer; text-decoration: underline; text-align: center; padding: 8px; margin-top: 6px; }
+
+    /* ══════════════════════════════════════════════════════
+       G11: 취소·탈퇴 방해 (Hard to Cancel)
+       — 구독 취소 경로를 숨김, 고객센터 전화만 안내
+    ══════════════════════════════════════════════════════ */
+    .cancel-obstruct { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-top: 24px; }
+    .cancel-obstruct h4 { font-size: 0.85rem; color: #888; margin-bottom: 10px; }
+    .cancel-steps { counter-reset: cancel-step; list-style: none; }
+    .cancel-steps li { counter-increment: cancel-step; display: flex; gap: 10px; margin-bottom: 8px; font-size: 0.82rem; color: #888; line-height: 1.5; }
+    .cancel-steps li::before { content: counter(cancel-step); width: 20px; height: 20px; border-radius: 50%; background: #e0e0e0; color: #888; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+    /* G1: 자동갱신 조항도 여기에 포함 */
+    .auto-renew-notice { font-size: 0.68rem; color: #bbb; margin-top: 12px; line-height: 1.8; }
+
+    /* ── 완료 화면 (결제 후) ── */
+    #complete-screen { display: none; text-align: center; padding: 60px 20px; }
+    #complete-screen .icon { font-size: 4rem; margin-bottom: 16px; }
+    #complete-screen h2 { font-size: 1.5rem; margin-bottom: 8px; }
+    #complete-screen p  { color: #666; font-size: 0.9rem; line-height: 1.7; }
+
+    /* ── 진행 중 화면 ── */
+    #checkout-form { }
+
+    /* 팝업 (G15 역할 겸) */
+    .popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9000; display: none; align-items: center; justify-content: center; }
+    .popup-box { background: #fff; border-radius: 12px; padding: 32px; max-width: 400px; width: 90%; text-align: center; }
+    .popup-box h3 { font-size: 1.2rem; margin-bottom: 12px; color: #333; }
+    .popup-box p  { font-size: 0.9rem; color: #666; margin-bottom: 20px; line-height: 1.6; }
+    .popup-btn-ok    { background: #e74c3c; color: #fff; border: none; border-radius: 6px; padding: 12px 28px; font-size: 0.9rem; cursor: pointer; display: block; width: 100%; margin-bottom: 8px; font-weight: 700; }
+    /* G16: 컨펌셰이밍 + G9: 취소 버튼 약화 */
+    .popup-btn-cancel { background: none; border: none; color: #bbb; font-size: 0.7rem; cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<header>
+  <div class="container header-inner">
+    <div class="logo">🛒 마켓테스트</div>
+    <div class="secure-badge">🔒 안전 결제</div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════
+     G14: 클릭 피로감 유발 — 7단계 체크아웃 프로세스
+     (간단한 구매에 불필요하게 많은 단계 강제)
+     선택자: [class*='step-indicator'], ol[class*='step'], [class*='checkout-step']
+══════════════════════════════════════════════════════ -->
+<div class="step-bar">
+  <div class="container">
+    <!-- ol.step-indicator → dom-selectors.json: ol[class*='step'], [class*='step-indicator'] -->
+    <ol class="step-indicator checkout-step wizard-step step-bar">
+      <li class="done">
+        <span class="step-num">✓</span>
+        <span class="step-label">장바구니</span>
+      </li>
+      <li class="step-sep done"></li>
+      <li class="done">
+        <span class="step-num">✓</span>
+        <span class="step-label">로그인</span>
+      </li>
+      <li class="step-sep done"></li>
+      <li class="done">
+        <span class="step-num">✓</span>
+        <span class="step-label">상품확인</span>
+      </li>
+      <li class="step-sep"></li>
+      <li class="active">
+        <span class="step-num active-num">4</span>
+        <span class="step-label">배송지</span>
+      </li>
+      <li class="step-sep"></li>
+      <li>
+        <span class="step-num">5</span>
+        <span class="step-label">쿠폰·포인트</span>
+      </li>
+      <li class="step-sep"></li>
+      <li>
+        <span class="step-num">6</span>
+        <span class="step-label">결제수단</span>
+      </li>
+      <li class="step-sep"></li>
+      <li>
+        <span class="step-num">7</span>
+        <span class="step-label">최종확인</span>
+      </li>
+    </ol>
+  </div>
+</div>
+
+<div class="container">
+  <div id="checkout-form">
+    <div class="checkout-layout">
+
+      <!-- 왼쪽: 폼 영역 -->
+      <div>
+
+        <!-- 배송지 정보 -->
+        <div class="section-card">
+          <h3>📦 배송지 정보</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">받는 분 이름 *</label>
+              <input type="text" class="form-input" placeholder="이름 입력">
+            </div>
+            <div class="form-group">
+              <label class="form-label">휴대폰 번호 *</label>
+              <input type="tel" class="form-input" placeholder="010-0000-0000">
+            </div>
+          </div>
+          <div class="addr-row">
+            <div class="form-group" style="flex:1">
+              <label class="form-label">우편번호 *</label>
+              <input type="text" class="form-input" placeholder="우편번호">
+            </div>
+            <button class="btn-search-addr">주소 검색</button>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">상세 주소 *</label>
+              <input type="text" class="form-input" placeholder="상세 주소 입력">
+            </div>
+          </div>
+          <!-- 불필요한 개인정보 추가 수집 -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">생년월일 (선택)</label>
+              <input type="date" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">직업 (선택)</label>
+              <select class="form-input">
+                <option>선택하세요</option>
+                <option>직장인</option><option>자영업</option><option>학생</option><option>주부</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">연간 소득 구간 (선택)</label>
+              <select class="form-input">
+                <option>선택하세요</option>
+                <option>2천만원 미만</option><option>2~4천만원</option><option>4~6천만원</option><option>6천만원 이상</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">자녀 수 (선택)</label>
+              <input type="number" class="form-input" placeholder="0" min="0" max="10">
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             G3: 몰래 장바구니 추가 (Basket Sneaking)
+             G10: 특정옵션의 사전선택 (Preselection)
+             — 동의 없이 추가 상품/구독이 기본 체크되어 있음
+        ══════════════════════════════════════════════════════ -->
+        <div class="section-card">
+          <h3>🛍️ 함께 구매 추천</h3>
+          <p style="font-size:0.8rem;color:#aaa;margin-bottom:12px;">
+            고객님이 선택한 상품과 함께 구매하면 더 좋은 상품들이에요
+            <span style="font-size:0.65rem;color:#ddd;">(기본 선택 상태 — 원하지 않으시면 체크 해제)</span>
+          </p>
+          <div class="sneaked-items">
+            <!-- G3+G10: 기본으로 체크된 추가 상품 -->
+            <div class="sneaked-item">
+              <input type="checkbox" id="sneak-sauce" name="sneak_sauce" checked><!-- G10 selector -->
+              <label for="sneak-sauce">
+                🧂 제주 흑돼지 전용 소스 세트 (3종)
+                <span class="item-price">+12,900원</span>
+                <small>함께 주문 시 무료 증정 → 실제로는 자동 과금됨</small>
+              </label>
+            </div>
+            <div class="sneaked-item">
+              <input type="checkbox" id="sneak-wrap" name="sneak_wrap" checked><!-- G10 selector -->
+              <label for="sneak-wrap">
+                🎁 프리미엄 선물 포장 서비스
+                <span class="item-price">+5,500원</span>
+                <small>기본 포장 포함 상품이나 추가 포장이 별도 과금됨</small>
+              </label>
+            </div>
+            <div class="sneaked-item">
+              <input type="checkbox" id="sneak-sub" name="sneak_subscription" checked><!-- G10 selector -->
+              <label for="sneak-sub">
+                🔄 정기배송 신청 (매월 자동 주문)
+                <span class="item-price">월 99,900원 자동 결제</span>
+                <small>최초 주문과 함께 정기구독 시작 · 해지는 고객센터 전화만 가능</small>
+              </label>
+            </div>
+            <div class="sneaked-item">
+              <input type="checkbox" id="sneak-ins" name="sneak_insurance" checked><!-- G10 selector -->
+              <label for="sneak-ins">
+                🛡️ 상품 손상 보호 보험 (월납)
+                <span class="item-price">월 3,900원 자동 결제</span>
+                <small>체크 해제 안 하면 자동 가입 · Limited Edition 멤버십 연계</small>
+              </label>
+            </div>
+          </div>
+          <p class="sneaked-note">※ 위 항목은 결제 완료 후 별도 주문서로 처리됩니다</p>
+        </div>
+
+        <!-- 결제 수단 -->
+        <div class="section-card">
+          <h3>💳 결제 수단</h3>
+          <div class="payment-options">
+            <label class="payment-opt selected">
+              <input type="radio" name="payment" value="card" checked>
+              💳 신용카드
+            </label>
+            <label class="payment-opt">
+              <input type="radio" name="payment" value="bank">
+              🏦 계좌이체
+            </label>
+            <label class="payment-opt">
+              <input type="radio" name="payment" value="phone">
+              📱 휴대폰결제
+            </label>
+          </div>
+
+          <!-- G10: 사전선택 — 개인정보 수집 과도 동의 기본 체크 -->
+          <div class="consent-box">
+            <h4>개인정보 수집·이용 동의 (필수 및 선택)</h4>
+            <div class="consent-item">
+              <input type="checkbox" id="c-required" checked><!-- G10 -->
+              <div>
+                <label for="c-required">[필수] 결제 처리를 위한 개인정보 수집·이용 동의</label>
+                <div class="consent-detail">수집항목: 이름, 연락처, 주소, 결제정보 / 이용목적: 주문·결제 처리</div>
+              </div>
+            </div>
+            <div class="consent-item">
+              <input type="checkbox" id="c-third" checked><!-- G10: 선택이지만 기본 체크 -->
+              <div>
+                <label for="c-third">[선택] 제3자 개인정보 제공 동의 (협력사 23개사)</label>
+                <div class="consent-detail">제공기관: 보험사·금융사·마케팅사 등 23개 협력사에 개인정보 제공</div>
+              </div>
+            </div>
+            <div class="consent-item">
+              <input type="checkbox" id="c-promo" checked><!-- G10 -->
+              <div>
+                <label for="c-promo">[선택] 맞춤형 광고 제공을 위한 행동정보 수집 동의</label>
+                <div class="consent-detail">수집항목: 구매이력, 검색어, 클릭패턴, 위치정보 (GPS 포함)</div>
+              </div>
+            </div>
+            <div class="consent-item">
+              <input type="checkbox" id="c-overseas" checked><!-- G10 -->
+              <div>
+                <label for="c-overseas">[선택] 개인정보 국외 이전 동의 (미국·일본 서버 저장)</label>
+                <div class="consent-detail">이전국가: 미국(AWS), 일본(Google Cloud) / 이전목적: 서비스 운영</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             G11: 취소·탈퇴 방해 (Hard to Cancel)
+             — 구독 해지 절차를 의도적으로 복잡하게 구성
+        ══════════════════════════════════════════════════════ -->
+        <div class="cancel-obstruct">
+          <h4>구독 서비스 해지 방법 안내</h4>
+          <ul class="cancel-steps">
+            <li>고객센터 대표번호(1588-XXXX)로 전화 (평일 09:00~18:00, 주말·공휴일 제외)</li>
+            <li>ARS 안내에서 "서비스 변경" → "구독 관리" → "해지 신청" 순서로 선택</li>
+            <li>상담원 연결 후 본인 인증 (이름, 생년월일, 등록 휴대폰 번호 모두 확인)</li>
+            <li>해지 사유 7가지 중 하나 선택 및 설문 응답 (필수)</li>
+            <li>재가입 방지를 위해 향후 90일간 동일 서비스 재신청 불가 안내 수령</li>
+            <li>해지 완료 문자 수신 (영업일 기준 3일 이내 발송)</li>
+          </ul>
+          <!-- G1: 숨은 갱신 안내도 여기 포함 -->
+          <p class="auto-renew-notice">
+            ※ 정기배송 및 VIP 멤버십은 별도 해지 신청 없이 계약 만료일 다음날 동일 조건으로 자동 갱신됩니다.
+            갱신 7일 전까지 위 절차에 따라 전화로만 해지 신청 가능하며, 앱·웹·이메일을 통한 해지는 처리되지 않습니다.
+            자동 갱신 후에는 청약철회 기간(7일)이 경과한 것으로 간주하여 환불이 불가합니다.
+            [G1: 이 내용은 결제 페이지 하단에만 표시되며, 결제 동의 팝업 화면에는 노출되지 않습니다.]
+          </p>
+        </div>
+
+      </div><!-- /left -->
+
+      <!-- 오른쪽: 주문 요약 (G2 순차공개 가격책정) -->
+      <div class="order-summary">
+        <div class="summary-card">
+          <h3>주문 요약</h3>
+
+          <div class="summary-item">
+            <span class="label">프리미엄 제주 흑돼지 2kg</span>
+            <span class="value">99,900원</span>
+          </div>
+          <!-- 처음엔 숨겨진 추가 비용 — G2: 결제 버튼 클릭 전까지 display:none -->
+          <div class="summary-item hidden-fees" id="fee-delivery">
+            <span class="label drip-label">🚚 배송비 <small>(프리미엄)</small></span>
+            <span class="value drip-label">+5,500원</span>
+          </div>
+          <div class="summary-item hidden-fees" id="fee-cold">
+            <span class="label drip-label">❄️ 냉장 포장비</span>
+            <span class="value drip-label">+3,000원</span>
+          </div>
+          <div class="summary-item hidden-fees" id="fee-wrap">
+            <span class="label drip-label">🎁 선물 포장비</span>
+            <span class="value drip-label">+5,500원</span>
+          </div>
+          <div class="summary-item hidden-fees" id="fee-sauce">
+            <span class="label drip-label">🧂 소스 세트</span>
+            <span class="value drip-label">+12,900원</span>
+          </div>
+          <div class="summary-item hidden-fees" id="fee-ins">
+            <span class="label drip-label">🛡️ 보험 (첫 달)</span>
+            <span class="value drip-label">+3,900원</span>
+          </div>
+          <div class="summary-item hidden-fees" id="fee-sub">
+            <span class="label drip-label">🔄 정기배송 (첫 회)</span>
+            <span class="value drip-label">포함</span>
+          </div>
+          <div class="summary-item" style="margin-top:6px;">
+            <span class="label" style="color:#aaa;font-size:0.8rem;">할인 적용</span>
+            <span class="value" style="color:#27ae60;">-0원</span>
+          </div>
+
+          <div class="summary-item total-row" id="total-row">
+            <span class="label">결제 예정 금액</span>
+            <span class="value" id="total-price">99,900원</span>
+          </div>
+          <!-- G2: 처음 노출 가격과 실제 청구 금액 차이 명시 -->
+          <p class="advertised-price" id="price-note" style="display:none">
+            ※ 상품 페이지 표시가: 99,900원<br>실제 청구: <strong style="color:#e74c3c;">130,700원</strong>
+          </p>
+
+          <!-- G9: CTA 버튼 압도적, 취소 버튼 극히 약하게 -->
+          <button class="btn-pay" id="pay-btn" onclick="revealFees()">
+            결제하기 💳
+          </button>
+          <button class="btn-back-weak" onclick="history.back()">
+            취소하고 나가기 (할인 혜택 모두 포기)
+          </button>
+
+          <!-- G2: 결제 전 요금 공개 후 최종 확인 버튼 -->
+          <button class="btn-pay" id="confirm-btn" style="display:none;background:#c0392b;" onclick="completePurchase()">
+            130,700원 결제 확정 →
+          </button>
+          <p id="drip-warning" style="display:none;font-size:0.72rem;color:#e74c3c;text-align:center;margin-top:8px;">
+            ※ 위 금액은 자동결제 항목 제외 첫 회 청구 금액입니다.
+          </p>
+        </div>
+      </div>
+
+    </div><!-- /checkout-layout -->
+  </div><!-- /checkout-form -->
+
+  <!-- 결제 완료 화면 -->
+  <div id="complete-screen">
+    <div class="icon">✅</div>
+    <h2>결제가 완료되었습니다</h2>
+    <p>
+      주문번호: <strong>TM-2026-039271</strong><br><br>
+      정기배송 및 VIP 멤버십이 함께 신청되었습니다.<br>
+      해지 방법은 결제 확인 이메일을 확인해 주세요.<br>
+      <span style="font-size:0.8rem;color:#bbb;">(이메일을 받지 못하셨다면 고객센터로 전화 바랍니다)</span>
+    </p>
+    <p style="margin-top:16px;"><a href="product-page.html" style="color:#e74c3c;">← 상품 페이지로 돌아가기</a></p>
+  </div>
+
+</div><!-- /container -->
+
+<!-- G15: 팝업 (결제 포기 시도 시 재등장 — 반복간섭) -->
+<div class="popup-overlay" id="exit-popup">
+  <div class="popup-box">
+    <h3>잠깐! 정말 취소하시겠어요?</h3>
+    <p>
+      지금 취소하시면 <strong style="color:#e74c3c">30% 추가 할인 쿠폰</strong>을 받을 수 없습니다.<br>
+      <small style="color:#aaa">현재 17명이 같은 상품을 결제 중입니다. 지금 빠르게 마감 임박!</small>
+    </p>
+    <!-- G16: 감정적 언어 + G9: 취소 버튼 약화 -->
+    <button class="popup-btn-ok" onclick="closeExitPopup()">계속 결제하겠습니다!</button>
+    <button class="popup-btn-cancel" onclick="document.getElementById('exit-popup').style.display='none'">아니요, 저는 혜택을 포기하겠습니다</button>
+  </div>
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════
+  // G2: 순차공개 가격책정 — '결제하기' 클릭 시 숨은 비용 노출
+  // ═══════════════════════════════════════════════════════════
+  function revealFees() {
+    // 숨겨진 비용 항목 표시
+    document.querySelectorAll('.hidden-fees').forEach(el => {
+      el.style.display = 'flex';
+    });
+
+    // 합산 금액 업데이트 (순차공개 완성)
+    document.getElementById('total-price').textContent = '130,700원';
+    document.getElementById('price-note').style.display = 'block';
+    document.getElementById('drip-warning').style.display = 'block';
+
+    // 버튼 전환
+    document.getElementById('pay-btn').style.display = 'none';
+    document.getElementById('confirm-btn').style.display = 'block';
+  }
+
+  function completePurchase() {
+    document.getElementById('checkout-form').style.display = 'none';
+    document.getElementById('complete-screen').style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+
+  // G15: 취소 버튼 클릭 시 나가기 방해 팝업 표시
+  function closeExitPopup() {
+    document.getElementById('exit-popup').style.display = 'none';
+  }
+
+  // G14: '취소하고 나가기' 클릭 → 팝업으로 방해
+  document.querySelector('.btn-back-weak').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('exit-popup').style.display = 'flex';
+  });
+
+  // G19: 가짜 동시 결제자 수 (난수)
+  // NET-05 패턴: Math.random() + setInterval
+  let buyers = 17;
+  setInterval(() => {
+    buyers += Math.floor(Math.random() * 3) - 1;
+    buyers = Math.max(10, Math.min(buyers, 30));
+  }, 4000);
+</script>
+
+</body>
+</html>

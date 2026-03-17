@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>프리미엄 제주 흑돼지 선물세트 - 마감 임박!</title>
+  <style>
+    /* ================================================================
+       DARK PATTERN TEST PAGE — product-page.html
+       위반 가이드라인: G4, G5, G6, G7, G8, G9, G10, G12, G13,
+                        G15, G16, G17, G18, G19
+       ================================================================ */
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f8f8f8; color: #222; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── 공통 레이아웃 ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+    .btn { display: inline-block; padding: 14px 32px; border-radius: 6px; font-size: 1rem; font-weight: 700; cursor: pointer; border: none; }
+    .btn-primary { background: #e74c3c; color: #fff; width: 100%; font-size: 1.1rem; padding: 18px; }
+    .btn-primary:hover { background: #c0392b; }
+
+    /* ══════════════════════════════════════════════════════
+       G15: 반복간섭 (Nagging) — 팝업 오버레이
+       선택자: dialog[open], [role='dialog'], [class*='modal'], [class*='popup']
+    ══════════════════════════════════════════════════════ */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9000; display: flex; align-items: center; justify-content: center; }
+    .modal { background: #fff; border-radius: 14px; padding: 36px 32px; max-width: 440px; width: 90%; text-align: center; position: relative; }
+    .modal h2 { font-size: 1.5rem; color: #e74c3c; margin-bottom: 12px; }
+    .modal p { font-size: 0.95rem; color: #555; margin-bottom: 24px; line-height: 1.7; }
+    .modal-close { position: absolute; top: 12px; right: 16px; font-size: 1.4rem; color: #aaa; cursor: pointer; background: none; border: none; }
+
+    /* G16: 감정적 언어사용 — 팝업 내 컨펌셰이밍 버튼 스타일 */
+    .btn-confirmshaming-accept { background: #e74c3c; color: #fff; padding: 14px 28px; border-radius: 6px; font-size: 1rem; font-weight: 700; cursor: pointer; border: none; display: block; width: 100%; margin-bottom: 10px; }
+    /* G9: 잘못된 계층구조 — 거절 버튼을 시각적으로 약화 */
+    .btn-confirmshaming-decline { background: none; border: none; color: #bbb; font-size: 0.7rem; cursor: pointer; text-decoration: underline; display: block; margin: 0 auto; }
+
+    /* ── 헤더 ── */
+    header { background: #fff; border-bottom: 1px solid #eee; padding: 12px 0; position: sticky; top: 0; z-index: 100; }
+    .header-inner { display: flex; align-items: center; gap: 20px; }
+    .logo { font-size: 1.3rem; font-weight: 900; color: #1a1a2e; }
+    nav { display: flex; gap: 20px; font-size: 0.9rem; color: #555; }
+    .header-actions { margin-left: auto; display: flex; gap: 12px; font-size: 0.85rem; color: #555; }
+
+    /* ══════════════════════════════════════════════════════
+       G7: 위장광고 (Disguised Ads)
+       선택자: [data-ad], [class*='ad-wrap'], [class*='sponsor-']
+    ══════════════════════════════════════════════════════ */
+    .sponsor-bar {
+      background: #fffbe6;
+      border-bottom: 1px solid #f0e68c;
+      padding: 10px 0;
+      font-size: 0.85rem;
+    }
+    .sponsor-content {
+      display: flex;
+      gap: 24px;
+      overflow: hidden;
+    }
+    /* 광고 레이블을 눈에 띄지 않게 작게 표시 */
+    .sponsor-label { font-size: 0.6rem; color: #ccc; margin-right: 4px; }
+    .ad-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .ad-wrap img { width: 48px; height: 48px; border-radius: 6px; background: #ddd; object-fit: cover; }
+    .ad-wrap .ad-text { font-size: 0.85rem; color: #333; }
+    .ad-wrap .ad-text strong { display: block; }
+    .ad-wrap .ad-text span { color: #e74c3c; font-weight: 700; }
+
+    /* ── 브레드크럼 ── */
+    .breadcrumb { padding: 12px 0; font-size: 0.8rem; color: #999; }
+    .breadcrumb span { color: #555; }
+
+    /* ── 상품 영역 ── */
+    .product-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 24px 0 40px; }
+    @media (max-width: 700px) { .product-layout { grid-template-columns: 1fr; } }
+
+    /* 상품 이미지 */
+    .product-gallery { position: relative; }
+    .product-img { width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, #f5e6d3 0%, #e8c9a0 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 4rem; }
+
+    /* ══════════════════════════════════════════════════════
+       G6: 유인판매 (Bait and Switch)
+       선택자: [class*='soldout'], [class*='out-of-stock']
+    ══════════════════════════════════════════════════════ */
+    .soldout-ribbon { position: absolute; top: 16px; left: 16px; background: #333; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 4px; }
+    .bait-notice { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: 0.85rem; color: #856404; }
+
+    /* ── 상품 정보 패널 ── */
+    .product-info { display: flex; flex-direction: column; gap: 16px; }
+
+    .product-tag { display: inline-block; background: #e74c3c; color: #fff; font-size: 0.7rem; font-weight: 700; padding: 4px 10px; border-radius: 3px; margin-bottom: 4px; }
+    .product-title { font-size: 1.5rem; font-weight: 900; line-height: 1.3; }
+    .product-subtitle { font-size: 0.9rem; color: #777; }
+
+    /* ══════════════════════════════════════════════════════
+       G17: 시간제한 알림 (False Urgency)
+       선택자: [data-countdown], [class*='countdown'], [class*='timer']
+       FOMO 키워드: "타임세일", "마감 임박", "오늘만"
+    ══════════════════════════════════════════════════════ */
+    .urgency-banner { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; border-radius: 8px; padding: 14px 16px; }
+    .urgency-banner .urgency-label { font-size: 0.8rem; opacity: 0.9; margin-bottom: 6px; }
+    .urgency-banner .urgency-label strong { font-size: 0.9rem; }
+    .countdown-wrap { display: flex; align-items: center; gap: 8px; }
+    .countdown-wrap .countdown-label { font-size: 0.85rem; }
+    .countdown { display: flex; gap: 6px; align-items: center; }
+    .countdown-unit { background: rgba(0,0,0,.3); border-radius: 4px; padding: 6px 10px; font-size: 1.3rem; font-weight: 900; min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+    .countdown-sep { font-size: 1.2rem; font-weight: 900; }
+    /* timer 선택자도 커버 */
+    .flash-timer { font-size: 0.75rem; opacity: 0.8; margin-top: 4px; }
+
+    /* ══════════════════════════════════════════════════════
+       G4: 거짓할인 (False Discount)
+       선택자: [class*='discount-rate'], [class*='sale-rate']
+    ══════════════════════════════════════════════════════ */
+    .price-block { border: 2px solid #e74c3c; border-radius: 8px; padding: 16px; }
+    .price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .discount-rate { background: #e74c3c; color: #fff; font-size: 1.4rem; font-weight: 900; padding: 2px 8px; border-radius: 4px; }
+    .price-original { font-size: 1rem; color: #aaa; text-decoration: line-through; }
+    .price-final { font-size: 2rem; font-weight: 900; color: #e74c3c; }
+    .price-unit { font-size: 0.85rem; color: #777; }
+    .sale-rate-note { font-size: 0.75rem; color: #999; margin-top: 4px; }
+    /* 원가 조작 주석: 실제로는 정가가 항상 이 금액이 아님 */
+
+    /* ══════════════════════════════════════════════════════
+       G18: 낮은 재고 알림 (Scarcity)
+       선택자: [class*='remain-stock'], [data-stock], [data-remain]
+       FOMO 키워드: "품절 임박", "한정 수량", "남은 수량"
+    ══════════════════════════════════════════════════════ */
+    .remain-stock { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 6px; font-size: 0.9rem; }
+    .remain-stock .stock-icon { font-size: 1rem; }
+    .remain-stock .stock-text { font-weight: 700; color: #e74c3c; }
+    .remain-stock .stock-bar-wrap { flex: 1; background: #fed7d7; border-radius: 4px; height: 6px; overflow: hidden; }
+    .remain-stock .stock-bar { background: #e74c3c; width: 8%; height: 100%; border-radius: 4px; }
+
+    /* ══════════════════════════════════════════════════════
+       G19: 다른 소비자의 활동 알림 (Social Proof)
+       FOMO 키워드: "명이 보고 있습니다", "방금 구매"
+    ══════════════════════════════════════════════════════ */
+    .social-proof-bar { display: flex; flex-direction: column; gap: 6px; }
+    .social-proof-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #555; }
+    .social-proof-item .dot { width: 8px; height: 8px; border-radius: 50%; background: #27ae60; flex-shrink: 0; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+    #viewer-count { font-weight: 700; color: #e74c3c; }
+    .recent-purchase { font-size: 0.8rem; color: #777; padding: 6px 10px; background: #f9f9f9; border-radius: 4px; border-left: 3px solid #3498db; }
+
+    /* ══════════════════════════════════════════════════════
+       G10: 특정옵션의 사전선택 (Preselection)
+       선택자: input[type='checkbox'][checked], input[type='radio'][checked]
+    ══════════════════════════════════════════════════════ */
+    .options-box { border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+    .options-box-title { background: #f5f5f5; padding: 10px 16px; font-size: 0.85rem; font-weight: 700; color: #555; }
+    .option-item { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; gap: 10px; }
+    .option-item:last-child { border-bottom: none; }
+    .option-item label { font-size: 0.9rem; line-height: 1.5; cursor: pointer; }
+    .option-item label small { display: block; color: #999; font-size: 0.78rem; }
+    .option-item label .opt-price { color: #e74c3c; font-weight: 700; }
+    /* 사전선택된 체크박스 - G10 위반 */
+    .option-item input[type='checkbox'] { margin-top: 3px; accent-color: #e74c3c; }
+
+    /* ══════════════════════════════════════════════════════
+       G8: 속임수 질문 (Trick Questions) — 이중부정 문구
+    ══════════════════════════════════════════════════════ */
+    .trick-questions { background: #fffbf0; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; }
+    .trick-questions h4 { font-size: 0.85rem; color: #92400e; margin-bottom: 10px; }
+    .trick-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 0.82rem; color: #555; line-height: 1.5; }
+    .trick-item:last-child { margin-bottom: 0; }
+
+    /* ══════════════════════════════════════════════════════
+       G9: 잘못된 계층구조 (Visual Interference)
+       — 구매 버튼은 크고 빨갛게, 취소/뒤로가기는 거의 안 보이게
+    ══════════════════════════════════════════════════════ */
+    .cta-area { display: flex; flex-direction: column; gap: 8px; }
+    /* 취소 버튼 시각적 약화 */
+    .btn-secondary-weak { background: none; border: none; color: #ccc; font-size: 0.72rem; cursor: pointer; text-decoration: underline; text-align: center; padding: 2px; }
+
+    /* ════════════════════════════════════════════════════
+       G13: 가격비교 방해 (Comparison Prevention)
+       — 단위를 제각각(100g, 1팩, 개당)으로 표시
+    ════════════════════════════════════════════════════ */
+    .compare-prevent { font-size: 0.78rem; color: #aaa; margin-top: 6px; }
+
+    /* ════════════════════════════════════════════════════
+       G12: 숨겨진 정보 (Hidden Information)
+       — 중요 약관을 작은 텍스트/접힌 상태로 숨김
+    ════════════════════════════════════════════════════ */
+    .hidden-info details { border: 1px solid #e8e8e8; border-radius: 6px; margin-bottom: 6px; }
+    .hidden-info summary { padding: 8px 12px; font-size: 0.78rem; color: #aaa; cursor: pointer; list-style: none; }
+    .hidden-info summary::-webkit-details-marker { display: none; }
+    .hidden-info .fine-print { padding: 10px 14px; font-size: 0.68rem; color: #bbb; line-height: 1.7; background: #fafafa; }
+
+    /* ── 상품 상세 설명 탭 ── */
+    .tabs { border-bottom: 2px solid #e0e0e0; display: flex; gap: 0; margin-top: 60px; }
+    .tab-btn { padding: 12px 24px; font-size: 0.9rem; background: none; border: none; cursor: pointer; color: #888; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab-btn.active { color: #e74c3c; border-bottom-color: #e74c3c; font-weight: 700; }
+    .tab-content { padding: 32px 0; }
+
+    /* ════════════════════════════════════════════════════
+       G5: 거짓추천 (False Social Proof) — 가짜 리뷰
+       NLP 탐지 대상: 매우 유사한 패턴의 리뷰가 반복됨
+    ════════════════════════════════════════════════════ */
+    .review-section { }
+    .review-summary { display: flex; align-items: center; gap: 24px; padding: 20px; background: #fff; border-radius: 10px; border: 1px solid #eee; margin-bottom: 24px; }
+    .review-avg { text-align: center; }
+    .review-avg .score { font-size: 3rem; font-weight: 900; color: #f39c12; }
+    .review-avg .stars { color: #f39c12; font-size: 1.2rem; }
+    .review-avg .total { font-size: 0.8rem; color: #888; }
+    .review-bars { flex: 1; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 0.8rem; }
+    .bar-row .bar-bg { flex: 1; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .bar-row .bar-fill { height: 100%; background: #f39c12; border-radius: 4px; }
+
+    .review-list { display: flex; flex-direction: column; gap: 16px; }
+    .review-card { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 20px; }
+    .review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .review-avatar { width: 36px; height: 36px; border-radius: 50%; background: #ddd; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 700; color: #666; }
+    .review-meta { flex: 1; }
+    .review-meta .name { font-size: 0.9rem; font-weight: 700; }
+    .review-meta .date { font-size: 0.75rem; color: #aaa; }
+    .review-stars { color: #f39c12; }
+    .review-body { font-size: 0.88rem; color: #444; line-height: 1.7; }
+    /* 가짜 리뷰 인증 배지 */
+    .verified-badge { font-size: 0.7rem; background: #d1fae5; color: #065f46; padding: 2px 6px; border-radius: 3px; }
+
+    /* G7 위장광고 - 본문 중간 삽입 */
+    .mid-ad-block { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin: 20px 0; position: relative; }
+    .mid-ad-sponsored { position: absolute; top: 8px; right: 10px; font-size: 0.6rem; color: #ccc; }
+
+    /* ── 사이드바 광고 (위장) ── */
+    .content-layout { display: grid; grid-template-columns: 1fr 280px; gap: 32px; margin-top: 24px; }
+    @media (max-width: 800px) { .content-layout { grid-template-columns: 1fr; } }
+    .sidebar-ad { background: #fff; border: 1px solid #eee; border-radius: 10px; padding: 16px; position: sticky; top: 80px; align-self: start; }
+    .sidebar-ad h4 { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
+    /* 광고임에도 "추천 상품"으로 위장 */
+    .sidebar-ad-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+    .sidebar-ad-item:last-child { border-bottom: none; }
+    .sidebar-ad-img { width: 56px; height: 56px; border-radius: 6px; background: linear-gradient(135deg, #e8f4fd, #bee3f8); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+    .sidebar-ad-info { font-size: 0.82rem; }
+    .sidebar-ad-info strong { display: block; margin-bottom: 2px; }
+    .sidebar-ad-info .ad-price { color: #e74c3c; font-weight: 700; }
+    /* 광고 레이블을 의도적으로 생략하거나 극히 작게 표시 */
+    .ad-micro-label { font-size: 0.55rem; color: #ddd; }
+
+    /* ── 하단 ── */
+    .footer { background: #1a1a2e; color: #888; padding: 40px 0; margin-top: 60px; font-size: 0.8rem; }
+    .footer a { color: #666; }
+    .footer .fine { font-size: 0.68rem; color: #555; margin-top: 16px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+<!-- ================================================================
+     G15: 반복간섭 (Nagging) — 페이지 로드 즉시 열리는 팝업
+     선택자: dialog[open], [role='dialog'], [class*='modal'], [class*='popup']
+================================================================ -->
+<div id="nagging-overlay" class="modal-backdrop">
+  <div id="nagging-popup" role="dialog" aria-modal="true" class="modal popup layer-pop">
+    <button class="modal-close" onclick="closeModal('nagging-overlay')" aria-label="닫기">✕</button>
+    <div style="font-size:2.5rem;margin-bottom:8px;">🎁</div>
+    <h2>오늘만! 특별 쿠폰</h2>
+    <p>
+      지금 이 상품을 구경하고 있는 <strong style="color:#e74c3c">23명</strong> 중<br>
+      선착순 <strong>5명</strong>에게만 <strong>15% 추가 할인</strong> 쿠폰을 드립니다!<br>
+      <small style="color:#aaa">이 팝업은 10분마다 다시 나타납니다.</small>
+    </p>
+    <!-- G16: 감정적 언어사용 (Confirmshaming) -->
+    <button class="btn-confirmshaming-accept" onclick="closeModal('nagging-overlay')">
+      네, 할인 받겠습니다!
+    </button>
+    <button class="btn-confirmshaming-decline" onclick="closeModal('nagging-overlay')">
+      아니요, 저는 손해를 감수하겠습니다
+    </button>
+  </div>
+</div>
+
+<!-- ================================================================
+     G7: 위장광고 (Disguised Ads) — 최상단 스폰서 배너
+     선택자: [data-ad], [class*='ad-wrap'], [class*='sponsor-']
+================================================================ -->
+<div class="sponsor-bar">
+  <div class="container">
+    <div class="sponsor-content">
+      <span class="sponsor-label">ad</span>
+      <div class="ad-wrap" data-ad data-adunit="top-banner-001">
+        <div style="width:48px;height:48px;background:#fee2e2;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🥩</div>
+        <div class="ad-text">
+          <strong>한돈 명품 삼겹살</strong>
+          <span>오늘만 2kg 39,900원 <span style="color:#aaa;text-decoration:line-through;font-size:0.8rem;">68,000원</span></span>
+        </div>
+      </div>
+      <div class="ad-wrap" data-ad data-adunit="top-banner-002">
+        <div style="width:48px;height:48px;background:#e0f2fe;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🦐</div>
+        <div class="ad-text">
+          <strong>동해 활새우 1kg</strong>
+          <span>Flash Sale — Limited Time Only!</span>
+        </div>
+      </div>
+      <div class="ad-wrap" data-ad data-adunit="top-banner-003">
+        <div style="width:48px;height:48px;background:#f0fdf4;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🍎</div>
+        <div class="ad-text">
+          <strong>제주 감귤 선물세트</strong>
+          <span>Limited Stock! 한정 수량 특가</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 헤더 ── -->
+<header>
+  <div class="container header-inner">
+    <div class="logo">🛒 마켓테스트</div>
+    <nav>
+      <a href="#">전체 카테고리</a>
+      <a href="#">축산·수산</a>
+      <a href="#">선물세트</a>
+    </nav>
+    <div class="header-actions">
+      <a href="#">장바구니 (3)</a>
+      <a href="#">내 계정</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    <div class="breadcrumb">
+      홈 &rsaquo; 축산·수산 &rsaquo; 선물세트 &rsaquo; <span>프리미엄 제주 흑돼지 선물세트</span>
+    </div>
+
+    <!-- ── 상품 메인 레이아웃 ── -->
+    <div class="product-layout">
+
+      <!-- 왼쪽: 상품 이미지 -->
+      <div class="product-gallery">
+        <!-- G6: 유인판매 — 광고된 상품은 품절 표시, 더 비싼 대체품 유도 -->
+        <div class="product-img">🐷</div>
+        <div class="soldout-ribbon">품절</div><!-- G6 selector: [class*='soldout'] -->
+        <div class="bait-notice">
+          ⚠️ <strong>해당 상품은 품절</strong>되었습니다.<br>
+          아래 <strong style="color:#e74c3c">프리미엄 특가 상품</strong>을 확인해 보세요!
+          <br><small style="color:#aaa">(광고된 가격의 상품은 재고 없음)</small>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 상품 정보 -->
+      <div class="product-info">
+        <div>
+          <span class="product-tag">타임세일 · 마감 임박</span>
+        </div>
+        <div class="product-title">프리미엄 제주 흑돼지 명품 선물세트 2kg</div>
+        <div class="product-subtitle">제주도산 100% 순종 흑돼지 · 냉장 직배송</div>
+
+        <!-- G17: 시간제한 알림 — 카운트다운 타이머 (클라이언트에서 난수로 리셋) -->
+        <div class="urgency-banner">
+          <div class="urgency-label">⚡ <strong>특가 마감 임박!</strong> 이 가격은 오늘만 유효합니다</div>
+          <div class="countdown-wrap">
+            <span class="countdown-label">남은 시간:</span>
+            <div class="countdown" data-countdown="3599" id="main-countdown">
+              <span class="countdown-unit" id="cd-h">00</span>
+              <span class="countdown-sep">:</span>
+              <span class="countdown-unit" id="cd-m">59</span>
+              <span class="countdown-sep">:</span>
+              <span class="countdown-unit" id="cd-s">59</span>
+            </div>
+          </div>
+          <!-- timer 클래스도 추가 (dom-selectors.json: [class*='timer']) -->
+          <div class="flash-timer timer">마지막 기회 · Flash Sale 종료까지</div>
+        </div>
+
+        <!-- G4: 거짓할인 — 원가를 부풀려 할인율 과장 -->
+        <div class="price-block">
+          <div class="price-row">
+            <span class="discount-rate">70% OFF</span><!-- selector: [class*='discount-rate'] -->
+            <span class="price-original">330,000원</span><!-- 실제 정가가 아님 -->
+            <span class="price-final">99,900원</span>
+          </div>
+          <div class="sale-rate-note">
+            <span class="sale-rate">세일율: 70% 할인</span><!-- selector: [class*='sale-rate'] -->
+            (정가 330,000원 기준, 자사몰 최고가 기준 할인율 적용)
+          </div>
+          <!-- G13: 가격비교 방해 — 단위를 혼재 -->
+          <div class="compare-prevent">
+            ※ 경쟁사 단가: A사 55,000원/팩(500g), B사 14,800원/100g 기준
+            <br>본 상품: 49,950원/kg — <em>직접 비교 불가 단위로 표기</em>
+          </div>
+        </div>
+
+        <!-- G18: 낮은 재고 알림 — 재고 수량 조작 -->
+        <div class="remain-stock" data-stock="3" data-remain="3"><!-- selectors: [class*='remain-stock'], [data-stock], [data-remain] -->
+          <span class="stock-icon">🔥</span>
+          <span class="stock-text">품절 임박! 한정 수량 3개만 남음</span>
+          <div class="stock-bar-wrap"><div class="stock-bar"></div></div>
+        </div>
+
+        <!-- G19: 다른 소비자 활동 알림 — JS로 난수 생성한 가짜 수치 -->
+        <div class="social-proof-bar">
+          <div class="social-proof-item">
+            <span class="dot"></span>
+            <span>현재 <strong id="viewer-count">17</strong>명이 보고 있습니다</span>
+          </div>
+          <div class="recent-purchase">
+            🛒 <span id="recent-buyer">서울 ○○구</span>의 누군가가 방금 구매했습니다 (<span id="recent-time">2분</span> 전)
+          </div>
+        </div>
+
+        <!-- G10: 특정옵션의 사전선택 — 불필요한 옵션 사전 체크 -->
+        <div class="options-box">
+          <div class="options-box-title">추가 옵션 선택</div>
+          <!-- G3 역할 겸함: 동의 없이 추가 상품 장바구니 삽입 위해 기본 체크 -->
+          <div class="option-item">
+            <input type="checkbox" id="opt-insurance" name="option_insurance" checked><!-- G10 selector -->
+            <label for="opt-insurance">
+              상품 파손 보호 보험 가입
+              <small>월 <span class="opt-price">2,900원</span> 자동 결제 · 구독형 (해지 방법: 고객센터 전화)</small>
+            </label>
+          </div>
+          <div class="option-item">
+            <input type="checkbox" id="opt-vip" name="option_vip" checked><!-- G10 selector -->
+            <label for="opt-vip">
+              VIP 멤버십 무료 체험 신청
+              <small>30일 후 월 <span class="opt-price">9,900원</span> 자동 전환 · Limited Edition 혜택 포함</small>
+            </label>
+          </div>
+          <div class="option-item">
+            <input type="radio" id="opt-delivery-premium" name="delivery" checked><!-- G10 selector -->
+            <label for="opt-delivery-premium">
+              <span class="opt-price">프리미엄 배송 (+5,500원)</span>
+              <small>내일 오전 도착 보장</small>
+            </label>
+          </div>
+          <div class="option-item">
+            <input type="radio" id="opt-delivery-normal" name="delivery">
+            <label for="opt-delivery-normal">
+              일반 배송 (무료)
+              <small style="color:#e74c3c;">재고 부족으로 3~5일 소요 예정</small>
+            </label>
+          </div>
+        </div>
+
+        <!-- G8: 속임수 질문 — 이중부정 / 혼란스러운 문구로 동의 유도 -->
+        <div class="trick-questions">
+          <h4>⚠️ 마케팅 수신 동의 (미체크 시 수신 중단 불가)</h4>
+          <div class="trick-item">
+            <input type="checkbox" id="trick1">
+            <label for="trick1">마케팅 정보 수신을 <strong>거부하지 않겠습니다</strong> (미체크 시 수신 유지)</label>
+          </div>
+          <div class="trick-item">
+            <input type="checkbox" id="trick2">
+            <label for="trick2">제3자 개인정보 제공 동의를 <strong>거부하는 것에 동의하지 않습니다</strong></label>
+          </div>
+          <div class="trick-item">
+            <input type="checkbox" id="trick3" checked><!-- G10 -->
+            <label for="trick3">야간(22:00~08:00) 광고 수신에 동의합니다 <small>(기본 동의 상태)</small></label>
+          </div>
+        </div>
+
+        <!-- G12: 숨겨진 정보 — 중요 약관을 접힌 상태로 최소 크기 글씨로 숨김 -->
+        <div class="hidden-info">
+          <details>
+            <summary>배송 및 환불 안내 ▸</summary>
+            <div class="fine-print">
+              냉장 직배송 상품으로 수령 후 교환·환불이 불가합니다.
+              포장 개봉 시 즉시 환불 권리가 소멸됩니다.
+              배송 지연에 따른 손해배상은 청구 불가합니다.
+            </div>
+          </details>
+          <details>
+            <summary>구독·자동결제 약관 전문 ▸</summary>
+            <div class="fine-print">
+              VIP 멤버십은 체험 기간 종료 7일 전까지 해지 신청하지 않으면 자동으로 유료 전환됩니다.
+              해지는 고객센터(평일 09:00~18:00) 전화로만 가능합니다.
+              인터넷·앱에서의 해지는 지원되지 않습니다.
+              자동 결제 실패 시 3회 재시도 후 서비스 이용이 정지됩니다.
+              [숨은 갱신 G1: 이 내용은 결제 완료 후 이메일로만 고지되며, 결제 전 화면에는 표시되지 않습니다.]
+            </div>
+          </details>
+        </div>
+
+        <!-- G9: 잘못된 계층구조 — CTA: 구매 버튼 압도적, 취소는 거의 안 보임 -->
+        <div class="cta-area">
+          <button class="btn btn-primary">🛒 지금 바로 구매하기</button>
+          <!-- 장바구니 담기도 강조 -->
+          <button class="btn" style="background:#fff;border:2px solid #e74c3c;color:#e74c3c;">장바구니 담기</button>
+          <!-- 취소/뒤로가기 — 극히 작고 희미하게 -->
+          <button class="btn-secondary-weak" onclick="history.back()">취소하고 돌아가기 (할인 혜택 포기)</button>
+        </div>
+
+      </div><!-- /product-info -->
+    </div><!-- /product-layout -->
+
+    <!-- ── 하단 콘텐츠 탭 ── -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('reviews',this)">상품 리뷰 (1,247)</button>
+      <button class="tab-btn" onclick="switchTab('detail',this)">상품 상세</button>
+      <button class="tab-btn" onclick="switchTab('qna',this)">Q&amp;A</button>
+    </div>
+
+    <div class="content-layout">
+
+      <!-- 메인 탭 콘텐츠 -->
+      <div>
+
+        <!-- ============================================================
+             G5: 거짓추천 (False Social Proof) — 가짜 리뷰
+             NLP 탐지: 아래 리뷰들은 코사인 유사도 >0.85 수준으로 거의 동일
+             FOMO 키워드: 압박형 어미 반복
+        ============================================================ -->
+        <div id="tab-reviews" class="tab-content review-section">
+          <div class="review-summary">
+            <div class="review-avg">
+              <div class="score">4.9</div>
+              <div class="stars">★★★★★</div>
+              <div class="total">1,247개 리뷰</div>
+            </div>
+            <div class="review-bars">
+              <div class="bar-row"><span style="width:20px">5★</span><div class="bar-bg"><div class="bar-fill" style="width:94%"></div></div><span>94%</span></div>
+              <div class="bar-row"><span style="width:20px">4★</span><div class="bar-bg"><div class="bar-fill" style="width:4%"></div></div><span>4%</span></div>
+              <div class="bar-row"><span style="width:20px">3★</span><div class="bar-bg"><div class="bar-fill" style="width:1%"></div></div><span>1%</span></div>
+              <div class="bar-row"><span style="width:20px">2★</span><div class="bar-bg"><div class="bar-fill" style="width:1%"></div></div><span>1%</span></div>
+              <div class="bar-row"><span style="width:20px">1★</span><div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div><span>0%</span></div>
+            </div>
+          </div>
+
+          <!-- 가짜 리뷰: 내용이 매우 유사하게 반복 (NLP 코사인 유사도 탐지 대상) -->
+          <div class="review-list">
+
+            <div class="review-card">
+              <div class="review-header">
+                <div class="review-avatar">김</div>
+                <div class="review-meta">
+                  <div class="name">김○○ <span class="verified-badge">구매인증</span></div>
+                  <div class="date">2026.03.10</div>
+                </div>
+                <div class="review-stars">★★★★★</div>
+              </div>
+              <div class="review-body">
+                정말 맛있는 제주 흑돼지입니다. 육질이 부드럽고 풍미가 뛰어나서 온 가족이 만족했습니다.
+                선물로 보내드렸는데 부모님께서 너무 좋아하셨어요. 포장도 깔끔하고 배송도 빠릅니다.
+                다음에도 꼭 다시 구매할 예정입니다. 강력 추천드립니다!
+              </div>
+            </div>
+
+            <!-- 유사 리뷰 1 — 거의 동일한 내용 -->
+            <div class="review-card">
+              <div class="review-header">
+                <div class="review-avatar">이</div>
+                <div class="review-meta">
+                  <div class="name">이○○ <span class="verified-badge">구매인증</span></div>
+                  <div class="date">2026.03.11</div>
+                </div>
+                <div class="review-stars">★★★★★</div>
+              </div>
+              <div class="review-body">
+                정말 맛있는 제주 흑돼지입니다. 육질이 매우 부드럽고 풍미가 뛰어나서 온 가족이 만족하였습니다.
+                선물로 보내드렸는데 부모님께서 매우 좋아하셨어요. 포장도 깔끔하고 배송도 정말 빠릅니다.
+                다음에도 꼭 재구매할 예정입니다. 적극 추천드립니다!
+              </div>
+            </div>
+
+            <!-- 유사 리뷰 2 — 거의 동일한 내용 -->
+            <div class="review-card">
+              <div class="review-header">
+                <div class="review-avatar">박</div>
+                <div class="review-meta">
+                  <div class="name">박○○ <span class="verified-badge">구매인증</span></div>
+                  <div class="date">2026.03.12</div>
+                </div>
+                <div class="review-stars">★★★★★</div>
+              </div>
+              <div class="review-body">
+                정말 맛있는 제주 흑돼지입니다. 육질이 부드럽고 풍미가 훌륭하여 온 가족이 모두 만족했습니다.
+                부모님 선물로 보내드렸더니 너무나 좋아하셨습니다. 포장이 깔끔하고 배송이 빨라서 좋았어요.
+                다음에도 재구매할 것입니다. 강력히 추천합니다!
+              </div>
+            </div>
+
+            <!-- 유사 리뷰 3 -->
+            <div class="review-card">
+              <div class="review-header">
+                <div class="review-avatar">최</div>
+                <div class="review-meta">
+                  <div class="name">최○○ <span class="verified-badge">구매인증</span></div>
+                  <div class="date">2026.03.13</div>
+                </div>
+                <div class="review-stars">★★★★★</div>
+              </div>
+              <div class="review-body">
+                정말 맛있는 제주 흑돼지네요. 부드러운 육질과 뛰어난 풍미로 온 가족 모두 만족하였습니다.
+                선물용으로 부모님께 보내드렸는데 너무 좋아하셨어요. 깔끔한 포장에 빠른 배송 최고입니다.
+                다음에도 꼭 다시 구매하겠습니다. 모두에게 추천드립니다!
+              </div>
+            </div>
+
+            <!-- 유사 리뷰 4 -->
+            <div class="review-card">
+              <div class="review-header">
+                <div class="review-avatar">정</div>
+                <div class="review-meta">
+                  <div class="name">정○○ <span class="verified-badge">구매인증</span></div>
+                  <div class="date">2026.03.14</div>
+                </div>
+                <div class="review-stars">★★★★★</div>
+              </div>
+              <div class="review-body">
+                정말 맛있는 제주 흑돼지 상품입니다. 육질이 굉장히 부드럽고 풍미가 뛰어나 온 가족이 만족했습니다.
+                부모님께 선물로 드렸더니 무척 좋아하셨어요. 포장도 깔끔하고 배송도 빠릅니다.
+                앞으로도 재구매하고 싶은 상품입니다. 진심으로 추천드립니다!
+              </div>
+            </div>
+
+            <!-- G7: 위장광고 — 리뷰 섹션 중간에 광고 삽입, 콘텐츠처럼 위장 -->
+            <div class="mid-ad-block" data-ad data-adunit="review-mid-001">
+              <span class="mid-ad-sponsored">광고</span><!-- 의도적으로 매우 작게 표시 -->
+              <div style="display:flex;gap:12px;align-items:center;">
+                <div style="font-size:2.5rem;">🥩</div>
+                <div>
+                  <div style="font-weight:700;font-size:0.95rem;">이 상품을 구매한 고객이 함께 산 상품</div>
+                  <div style="font-size:0.85rem;color:#e74c3c;font-weight:700;">한돈 목살 1kg — 단 29,900원 (Selling Fast!)</div>
+                  <div style="font-size:0.75rem;color:#aaa;">Only Left 7개 · Limited Stock</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="tab-detail" class="tab-content" style="display:none;">
+          <p style="color:#666;font-size:0.9rem;padding:20px 0;">상품 상세 설명 영역 (테스트 페이지)</p>
+        </div>
+        <div id="tab-qna" class="tab-content" style="display:none;">
+          <p style="color:#666;font-size:0.9rem;padding:20px 0;">Q&amp;A 영역 (테스트 페이지)</p>
+        </div>
+
+      </div>
+
+      <!-- 사이드바: 위장광고 "추천 상품" -->
+      <div class="sidebar-ad" data-ad data-adunit="sidebar-001">
+        <h4>함께 많이 본 상품 <span class="ad-micro-label">광고</span></h4>
+        <div class="sidebar-ad-item">
+          <div class="sidebar-ad-img">🦀</div>
+          <div class="sidebar-ad-info">
+            <strong>영덕 대게 세트</strong>
+            <div class="ad-price">89,900원</div>
+            <div style="font-size:0.7rem;color:#e74c3c;">🔥 마감 임박 · 곧 종료</div>
+          </div>
+        </div>
+        <div class="sidebar-ad-item">
+          <div class="sidebar-ad-img">🐟</div>
+          <div class="sidebar-ad-info">
+            <strong>간고등어 선물세트</strong>
+            <div class="ad-price">45,000원</div>
+            <div style="font-size:0.7rem;color:#e74c3c;">⏰ 재고 부족 · Last Chance</div>
+          </div>
+        </div>
+        <div class="sidebar-ad-item">
+          <div class="sidebar-ad-img">🍖</div>
+          <div class="sidebar-ad-info">
+            <strong>한우 등심 1++ 1kg</strong>
+            <div class="ad-price">149,000원</div>
+            <div style="font-size:0.7rem;color:#e74c3c;">✨ 지금만 이 가격</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content-layout -->
+
+  </div><!-- /container -->
+</main>
+
+<!-- ── 푸터: G1 숨은 갱신 약관 (매우 작은 글씨로 숨겨진 자동갱신 조항) ── -->
+<footer class="footer">
+  <div class="container">
+    <p>© 2026 마켓테스트 | <a href="#">이용약관</a> | <a href="#">개인정보처리방침</a> | <a href="#">고객센터</a></p>
+    <!-- G1: 숨은 갱신 — 자동갱신 조항을 푸터 최하단 극소 글씨로 숨김 -->
+    <p class="fine">
+      ※ 본 서비스의 구독 상품은 별도 해지 신청이 없는 한 계약 만료일 기준 익일 자동으로 동일 조건의 구독이 갱신되며,
+      기등록된 결제 수단으로 요금이 자동 청구됩니다. 자동 갱신을 원하지 않으실 경우 만료일 7일 전(토·일·공휴일 제외)까지
+      고객센터(평일 09:00–18:00)에 전화로만 해지 신청이 가능합니다. 인터넷·앱·이메일을 통한 해지는 처리되지 않습니다.
+      VIP 멤버십 무료 체험 종료 후 자동 과금에 관한 내용은 체험 신청 시 동의한 이용약관 제17조 제3항을 참조하십시오.
+      위 내용은 소비자보호법 제8조에 따른 계약 갱신 고지 의무 이행을 위해 기재된 사항입니다.
+    </p>
+  </div>
+</footer>
+
+<!-- ================================================================
+     JavaScript: G17·G18·G19 탐지 대상 클라이언트 조작 스크립트
+     NET-05·NET-06 탐지 패턴:
+       - setInterval + Math.random() → 가짜 뷰어 카운트
+       - setTimeout + Math.random() → 가짜 재고 감소
+       - 카운트다운 0에서 초기화 (타이머 리셋 패턴)
+================================================================ -->
+<script>
+  // ── G19 탐지 대상: 난수로 뷰어 수 조작 ──
+  let viewerCount = 17;
+  setInterval(() => {
+    // NET-05 패턴: Math.random()과 카운터 변수의 연관 패턴
+    viewerCount += Math.floor(Math.random() * 3) - 1;
+    viewerCount = Math.max(12, Math.min(viewerCount, 35));
+    const el = document.getElementById('viewer-count');
+    if (el) el.textContent = viewerCount;
+  }, 3000);
+
+  // ── G18 탐지 대상: 난수로 재고 감소 조작 ──
+  let stockCount = 3;
+  const stockText = document.querySelector('.remain-stock .stock-text');
+  setTimeout(() => {
+    // NET-05 패턴: setTimeout + Math.random() + 재고 감소
+    stockCount = Math.max(1, stockCount - Math.ceil(Math.random() * 1));
+    if (stockText) stockText.textContent = `품절 임박! 한정 수량 ${stockCount}개만 남음`;
+  }, 8000);
+
+  // ── G17 탐지 대상: 카운트다운 0 도달 시 초기화 (반복 리셋) ──
+  const initialTime = 3599;
+  let timer = initialTime;
+  const hEl = document.getElementById('cd-h');
+  const mEl = document.getElementById('cd-m');
+  const sEl = document.getElementById('cd-s');
+
+  setInterval(() => {
+    timer--;
+    // NET-06 패턴: 타이머가 0이 되면 초기값으로 리셋 → 진짜 마감이 아님
+    if (timer <= 0) timer = initialTime;
+
+    const h = Math.floor(timer / 3600);
+    const m = Math.floor((timer % 3600) / 60);
+    const s = timer % 60;
+    if (hEl) hEl.textContent = String(h).padStart(2, '0');
+    if (mEl) mEl.textContent = String(m).padStart(2, '0');
+    if (sEl) sEl.textContent = String(s).padStart(2, '0');
+  }, 1000);
+
+  // ── G19: 가짜 최근 구매자 알림 ──
+  const districts = ['강남구', '서초구', '마포구', '송파구', '용산구', '성동구', '광진구'];
+  const buyerEl = document.getElementById('recent-buyer');
+  const timeEl  = document.getElementById('recent-time');
+  setInterval(() => {
+    if (buyerEl) buyerEl.textContent = `서울 ${districts[Math.floor(Math.random() * districts.length)]}`;
+    if (timeEl)  timeEl.textContent  = `${Math.floor(Math.random() * 9) + 1}분`;
+  }, 7000);
+
+  // ── G15: 반복간섭 — 10분마다 팝업 재표시 ──
+  setTimeout(() => {
+    const overlay = document.getElementById('nagging-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  }, 600000); // 10분
+
+  // ── 유틸 ──
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+    // 5분 후 재표시 (반복간섭 G15)
+    setTimeout(() => { if (el) el.style.display = 'flex'; }, 300000);
+  }
+
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const tab = document.getElementById('tab-' + tabId);
+    if (tab) tab.style.display = 'block';
+    btn.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

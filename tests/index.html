@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark-Scanner 테스트 페이지 인덱스</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f5f5f5; padding: 40px 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 2rem; color: #1a1a2e; margin-bottom: 8px; }
+    .subtitle { color: #666; margin-bottom: 40px; font-size: 0.95rem; }
+    .badge-warn { display: inline-block; background: #e74c3c; color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; margin-left: 8px; vertical-align: middle; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+    .card { background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; padding: 28px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card h2 { font-size: 1.1rem; margin-bottom: 8px; color: #222; }
+    .card p { font-size: 0.875rem; color: #666; line-height: 1.6; margin-bottom: 16px; }
+    .card a { display: inline-block; background: #1a1a2e; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 0.875rem; transition: background .2s; }
+    .card a:hover { background: #16213e; }
+    .pattern-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .tag { font-size: 0.7rem; padding: 3px 8px; border-radius: 20px; border: 1px solid; }
+    .tag.red   { color: #c0392b; border-color: #c0392b; background: #fdf2f2; }
+    .tag.blue  { color: #2980b9; border-color: #2980b9; background: #f0f7ff; }
+    .tag.green { color: #27ae60; border-color: #27ae60; background: #f0fff4; }
+    .tag.orange{ color: #d35400; border-color: #d35400; background: #fff8f0; }
+    .legend { margin-top: 40px; background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; padding: 28px; }
+    .legend h3 { margin-bottom: 16px; color: #333; }
+    .legend table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .legend th { text-align: left; padding: 8px 12px; background: #f8f8f8; color: #555; border-bottom: 2px solid #e0e0e0; }
+    .legend td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; color: #444; }
+    .legend tr:last-child td { border-bottom: none; }
+    .module-badge { display: inline-block; font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+    .mod-dom { background: #dbeafe; color: #1d4ed8; }
+    .mod-nlp { background: #d1fae5; color: #065f46; }
+    .mod-net { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Dark-Scanner 테스트 파일 인덱스 <span class="badge-warn">TEST ONLY</span></h1>
+  <p class="subtitle">공정거래위원회 온라인 다크 패턴 19가지 가이드라인 전체 위반 테스트용 페이지 모음.<br>확장 프로그램을 로드한 후 아래 페이지를 열면 각 모듈의 탐지 동작을 검증할 수 있습니다.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h2>상품 상세 페이지</h2>
+      <p>실제 쇼핑몰과 유사한 레이아웃으로 19가지 다크 패턴 대부분을 한 페이지에서 테스트합니다. DOM Scanner, NLP Analyzer, Network Sniffer 전 모듈 검증 가능.</p>
+      <div class="pattern-tags">
+        <span class="tag red">G4 거짓할인</span>
+        <span class="tag red">G5 거짓추천</span>
+        <span class="tag red">G6 유인판매</span>
+        <span class="tag red">G7 위장광고</span>
+        <span class="tag orange">G15 반복간섭</span>
+        <span class="tag orange">G16 감정언어</span>
+        <span class="tag orange">G17 시간제한</span>
+        <span class="tag orange">G18 재고알림</span>
+        <span class="tag orange">G19 소비자활동</span>
+        <span class="tag blue">G8 속임수질문</span>
+        <span class="tag blue">G9 계층구조</span>
+        <span class="tag blue">G10 사전선택</span>
+        <span class="tag blue">G12 숨겨진정보</span>
+        <span class="tag blue">G13 비교방해</span>
+      </div>
+      <a href="product-page.html">테스트 열기 →</a>
+    </div>
+
+    <div class="card">
+      <h2>결제·구독 페이지</h2>
+      <p>결제 흐름에서 발생하는 순차공개 가격책정, 몰래 장바구니 추가, 숨은 갱신, 취소 방해, 클릭 피로감 패턴을 집중 검증합니다.</p>
+      <div class="pattern-tags">
+        <span class="tag red">G1 숨은갱신</span>
+        <span class="tag red">G2 순차공개가격</span>
+        <span class="tag red">G3 몰래장바구니</span>
+        <span class="tag blue">G10 사전선택</span>
+        <span class="tag blue">G11 취소방해</span>
+        <span class="tag blue">G14 클릭피로감</span>
+      </div>
+      <a href="checkout.html">테스트 열기 →</a>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h3>공정위 19가지 가이드라인 → 탐지 모듈 매핑</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>유형명</th>
+          <th>카테고리</th>
+          <th>탐지 모듈</th>
+          <th>테스트 파일</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>G1</td><td>숨은 갱신</td><td>편취형</td><td><span class="module-badge mod-dom">dom</span></td><td>checkout.html</td></tr>
+        <tr><td>G2</td><td>순차공개 가격책정</td><td>편취형</td><td><span class="module-badge mod-dom">dom</span></td><td>checkout.html</td></tr>
+        <tr><td>G3</td><td>몰래 장바구니 추가</td><td>편취형</td><td><span class="module-badge mod-dom">dom</span></td><td>checkout.html</td></tr>
+        <tr><td>G4</td><td>거짓할인</td><td>오도형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G5</td><td>거짓추천 (가짜리뷰)</td><td>오도형</td><td><span class="module-badge mod-nlp">nlp</span></td><td>product-page.html</td></tr>
+        <tr><td>G6</td><td>유인판매</td><td>오도형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G7</td><td>위장광고</td><td>오도형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G8</td><td>속임수 질문</td><td>오도형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G9</td><td>잘못된 계층구조</td><td>방해형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G10</td><td>특정옵션의 사전선택</td><td>방해형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html / checkout.html</td></tr>
+        <tr><td>G11</td><td>취소·탈퇴 방해</td><td>방해형</td><td><span class="module-badge mod-dom">dom</span></td><td>checkout.html</td></tr>
+        <tr><td>G12</td><td>숨겨진 정보</td><td>방해형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G13</td><td>가격비교 방해</td><td>방해형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G14</td><td>클릭 피로감 유발</td><td>방해형</td><td><span class="module-badge mod-dom">dom</span></td><td>checkout.html</td></tr>
+        <tr><td>G15</td><td>반복간섭 (나깅)</td><td>압박형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G16</td><td>감정적 언어사용</td><td>압박형</td><td><span class="module-badge mod-nlp">nlp</span></td><td>product-page.html</td></tr>
+        <tr><td>G17</td><td>시간제한 알림</td><td>압박형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G18</td><td>낮은 재고 알림</td><td>압박형</td><td><span class="module-badge mod-dom">dom</span></td><td>product-page.html</td></tr>
+        <tr><td>G19</td><td>다른 소비자 활동 알림</td><td>압박형</td><td><span class="module-badge mod-net">network</span></td><td>product-page.html</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

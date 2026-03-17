@@ -152,6 +152,7 @@ class OverlayManager {
     const host = document.createElement('dark-scanner-overlay');
 
     // 호스트는 fixed 0×0 — 원본 레이아웃에 영향 없음
+    // z-index는 !important로 설정해야 sticky 헤더 등의 스태킹 컨텍스트보다 위에 표시됨
     Object.assign(host.style, {
       position: 'fixed',
       top: '0',
@@ -159,9 +160,9 @@ class OverlayManager {
       width: '0',
       height: '0',
       overflow: 'visible',
-      zIndex: '2147483646',
       pointerEvents: 'none',
     });
+    host.style.setProperty('z-index', '2147483647', 'important');
 
     this.root = host.attachShadow({ mode: 'closed' });
 

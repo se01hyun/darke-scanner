@@ -165,14 +165,17 @@ export class DOMScanner {
     const baitAndSwitch    = this.detectBaitAndSwitch();
     const clickFatigue     = this.detectClickFatigue();
 
-    const detections: DarkPatternDetection[] = [
+    const raw: DarkPatternDetection[] = [
       ...countdown, ...stockWarning, ...preselected, ...weakenedCancel,
       ...disguisedAds, ...hiddenInfo,
       ...falseDiscount, ...hardToCancel, ...comparisonPrev, ...nagging,
       ...baitAndSwitch, ...clickFatigue,
     ];
 
-    logger.log('DOM', `스캔 완료 ${(performance.now() - t0).toFixed(1)}ms | 총 ${detections.length}건`
+    // 같은 가이드라인 번호로 중첩된 요소 탐지 시 가장 바깥쪽 요소 하나만 유지
+    const detections = this.deduplicateOverlapping(raw);
+
+    logger.log('DOM', `스캔 완료 ${(performance.now() - t0).toFixed(1)}ms | 총 ${detections.length}건 (중복제거 전 ${raw.length}건)`
       + ` (카운트다운:${countdown.length} 재고:${stockWarning.length} 사전선택:${preselected.length}`
       + ` 약화취소:${weakenedCancel.length} 위장광고:${disguisedAds.length} 숨겨진정보:${hiddenInfo.length}`
       + ` 거짓할인:${falseDiscount.length} 취소방해:${hardToCancel.length}`
@@ -996,6 +999,71 @@ export class DOMScanner {
     }
 
     return detections;
+  }
+
+  /**
+   * 같은 가이드라인 번호로 탐지된 요소들 중 DOM 중첩 관계에 있는 경우
+   * 가장 바깥쪽 조상 요소 하나만 남기고 자손 요소의 탐지 결과를 제거한다.
+   *
+   * 예) G17: .countdown div 안에 있는 .countdown-unit span 3개가 함께 탐지된 경우
+   *    → 바깥쪽 .countdown div 하나만 유지하고 span 3개 제거
+   */
+  private deduplicateOverlapping(detections: DarkPatternDetection[]): DarkPatternDetection[] {
+    // element 정보가 없는 탐지(NLP·네트워크 전용)는 필터링 대상에서 제외
+    const resolved: Array<{ d: DarkPatternDetection; node: HTMLElement }> = [];
+    const unresolvable: DarkPatternDetection[] = [];
+
+    for (const d of detections) {
+      if (!d.element?.xpath) {
+        unresolvable.push(d);
+        continue;
+      }
+      const node = this.resolveXPath(d.element.xpath);
+      if (node) {
+        resolved.push({ d, node });
+      } else {
+        unresolvable.push(d);
+      }
+    }
+
+    const kept: typeof resolved = [];
+
+    for (let i = 0; i < resolved.length; i++) {
+      const { d: di, node: ni } = resolved[i];
+      let isInner = false;
+
+      for (let j = 0; j < resolved.length; j++) {
+        if (i === j) continue;
+        const { d: dj, node: nj } = resolved[j];
+        // 같은 가이드라인 번호이고, ni가 nj의 자손이면 ni는 제거 대상
+        if (di.guideline === dj.guideline && nj !== ni && nj.contains(ni)) {
+          isInner = true;
+          break;
+        }
+      }
+
+      if (!isInner) kept.push(resolved[i]);
+    }
+
+    const result = [...unresolvable, ...kept.map(({ d }) => d)];
+    const removed = detections.length - result.length;
+    if (removed > 0) {
+      logger.log('DOM', `중첩 중복 제거: ${removed}건 필터링 (${detections.length} → ${result.length})`);
+    }
+
+    return result;
+  }
+
+  /** XPath 문자열로 DOM 요소를 조회한다. */
+  private resolveXPath(xpath: string): HTMLElement | null {
+    try {
+      const result = document.evaluate(
+        xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null,
+      );
+      return result.singleNodeValue as HTMLElement | null;
+    } catch {
+      return null;
+    }
   }
 
   /**
