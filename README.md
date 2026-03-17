@@ -157,15 +157,17 @@ Vitest + jsdom 기반 단위 테스트 스위트가 포함되어 있습니다.
 
 | 파일 | 테스트 수 | 대상 |
 |------|----------|------|
-| `tests/unit/dom-scanner.test.ts` | 108건 | DOM 탐지 메서드 15종 |
+| `tests/unit/dom-scanner.test.ts` | 75건 | DOM 탐지 메서드 15종 |
 | `tests/unit/rule-engine.test.ts` | 10건 | 위험 점수 계산 |
-| `tests/unit/network-sniffer.test.ts` | 22건 | 네트워크 분석 |
+| `tests/unit/network-sniffer.test.ts` | 23건 | 네트워크 분석 |
 | `tests/unit/popup.test.ts` | 38건 | 팝업 렌더러·점수 판정 |
 | `tests/unit/overlay.test.ts` | 11건 | XPath 탐색·오버레이 초기화 |
-| **합계** | **157건** | |
+| `tests/unit/nlp.test.ts` | 42건 | 키워드 매칭·압박 점수·리뷰 분석·토크나이저 |
+| `tests/unit/deduplication.test.ts` | 11건 | 중복 탐지 제거 (조상-자손·근접 형제) |
+| **합계** | **210건** | |
 
 - **환경:** Vitest + jsdom (브라우저 DOM API 시뮬레이션), Chrome Extension API 목
-- **DOM Scanner 커버리지:** 80%+ (Statement 기준)
+- **전체 커버리지:** 50%+ (Statement 기준)
 - **특이사항:** `getBoundingClientRect()` 가시성 체크, `CSS.escape` 폴리필, `__DS_DEBUG__` 상수 주입 등 브라우저 고유 API 모킹 적용
 
 ---
@@ -176,7 +178,7 @@ GitHub Actions를 통해 `main` 브랜치 push 및 PR 시 자동 파이프라인
 
 | Job | 내용 |
 |-----|------|
-| **Typecheck & Test** | `typecheck` → `typecheck:test` → `npm test` 순차 실행 |
+| **Typecheck & Test** | `lint` → `typecheck` → `typecheck:test` → `test:coverage` 순차 실행, 커버리지 리포트 아티팩트 업로드 (7일 보관) |
 | **Production Build** | test 통과 후 `npm run build:prod` 실행, `dist/` 아티팩트 업로드 (7일 보관) |
 
 ---
