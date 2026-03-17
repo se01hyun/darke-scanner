@@ -39,19 +39,25 @@ export class TextCollector {
       '[class*="후기"]', '[class*="opinion"]',
       '[class*="평가"]', '[itemprop="reviewBody"]',
     ];
-    const texts: string[] = [];
+    const candidates: string[] = [];
     const seen = new Set<string>();
     for (const sel of selectors) {
       for (const el of document.querySelectorAll(sel)) {
         const t = el.textContent?.trim();
         if (t && t.length > 10 && !seen.has(t)) {
           seen.add(t);
-          texts.push(t);
+          candidates.push(t);
         }
-        if (texts.length >= MAX_REVIEW_TEXTS) return texts;
+        if (candidates.length >= MAX_REVIEW_TEXTS) break;
       }
     }
-    return texts;
+
+    // 다른 후보 텍스트를 포함하는 컨테이너 요소를 제거한다.
+    // .review-section, .review-list, .review-card 같은 상위 컨테이너가
+    // .review-body의 텍스트를 그대로 포함하므로 개별 리뷰 텍스트만 남긴다.
+    return candidates.filter(
+      (t) => !candidates.some((other) => other !== t && t.includes(other)),
+    );
   }
 
   private collectCtaTexts(): string[] {

@@ -3,7 +3,10 @@
 
 import type { ReviewCluster } from '../types';
 
-const SIMILARITY_THRESHOLD = 0.85;
+// ONNX 시맨틱 유사도(0.85)와 달리, TF 코사인 유사도는 한국어 형태소 변형
+// (만족했습니다/만족하였습니다 등)으로 인해 실제 유사 리뷰에서도 0.70~0.76 수준으로
+// 측정된다. ONNX 모델 없는 폴백 시에는 0.65를 임계값으로 사용한다.
+const SIMILARITY_THRESHOLD = 0.65;
 const MIN_REVIEW_LENGTH = 10; // 너무 짧은 리뷰는 분석 제외
 
 /** 텍스트를 토큰 배열로 분해 (공백/구두점 기준) */
