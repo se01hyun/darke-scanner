@@ -63,6 +63,19 @@ const AD_DISCLOSURE_KEYWORDS = ['광고', '스폰서', '협찬', 'AD', 'Sponsore
 // 광고 요소의 텍스트/타이틀에 이 단어가 있어도 스킵 (광고주가 자체 표시한 경우)
 const AD_SELF_LABEL_RE = /광고|스폰서|AD\b|Sponsored|협찬/i;
 
+// ─── 가이드라인 6: 유인판매 상수 ──────────────────────────────────────────────
+// 품절/단종 상태 신호 키워드
+const SOLDOUT_TERMS = ['품절', '단종', '판매종료', '재고없음', '일시품절', '구매불가', '판매중지'];
+// 같은 상품 컨텍스트에 함께 있으면 대체 상품 유도로 간주
+const BAIT_SWITCH_ALT_TERMS = ['대신', '유사상품', '관련상품', '추천상품', '다른 상품', '대체상품', '함께 보기'];
+// 상품 상세 컨텍스트 선택자
+const PRODUCT_CTX_SELECTOR = '[class*="product"],[class*="goods"],[class*="item"],[class*="detail"]';
+
+// ─── 가이드라인 14: 클릭 피로감 상수 ──────────────────────────────────────────
+const CLICK_FATIGUE_STEP_THRESHOLD     = 5;  // 이 단계 수 이상이면 탐지
+const CLICK_FATIGUE_CHECKBOX_THRESHOLD = 8;  // 동의 팝업 내 체크박스가 이 수 이상이면 탐지
+const CONSENT_KEYWORDS = ['약관', '동의', '개인정보', '수집', '이용', '동의하기'];
+
 // ─── 가이드라인 12: 숨겨진 정보 상수 ────────────────────────────────────────
 // 이 단어가 포함된 텍스트가 매우 작은 폰트로 표시되면 숨겨진 정보로 탐지
 const HIDDEN_INFO_TERMS = [
@@ -96,18 +109,22 @@ export class DOMScanner {
     const hardToCancel     = this.detectHardToCancel();
     const comparisonPrev   = this.detectComparisonPrevention();
     const nagging          = this.detectNagging();
+    const baitAndSwitch    = this.detectBaitAndSwitch();
+    const clickFatigue     = this.detectClickFatigue();
 
     const detections: DarkPatternDetection[] = [
       ...countdown, ...stockWarning, ...preselected, ...weakenedCancel,
       ...disguisedAds, ...hiddenInfo,
       ...falseDiscount, ...hardToCancel, ...comparisonPrev, ...nagging,
+      ...baitAndSwitch, ...clickFatigue,
     ];
 
     logger.log('DOM', `스캔 완료 ${(performance.now() - t0).toFixed(1)}ms | 총 ${detections.length}건`
       + ` (카운트다운:${countdown.length} 재고:${stockWarning.length} 사전선택:${preselected.length}`
       + ` 약화취소:${weakenedCancel.length} 위장광고:${disguisedAds.length} 숨겨진정보:${hiddenInfo.length}`
       + ` 거짓할인:${falseDiscount.length} 취소방해:${hardToCancel.length}`
-      + ` 가격비교방해:${comparisonPrev.length} 반복간섭:${nagging.length})`);
+      + ` 가격비교방해:${comparisonPrev.length} 반복간섭:${nagging.length}`
+      + ` 유인판매:${baitAndSwitch.length} 클릭피로감:${clickFatigue.length})`);
     logger.detections('DOM', detections);
     logger.groupEnd();
 
@@ -705,6 +722,180 @@ export class DOMScanner {
           },
           element: getElementInfo(el),
         });
+      });
+    }
+
+    return detections;
+  }
+
+  // ─── 공정위 기준 6번: 유인판매 (Bait and Switch) ────────────────────────────
+  // 품절·단종 상태인 상품 페이지에서 다른 상품으로 대체 유도하는 패턴 탐지
+  private detectBaitAndSwitch(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    // 1) CSS 선택자로 품절 요소를 먼저 찾기
+    for (const selector of (domSelectors.selectors as Record<string, string[]>)['bait_and_switch'] ?? []) {
+      document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        if (seen.has(el)) return;
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return;
+
+        const productCtx = el.closest(PRODUCT_CTX_SELECTOR) ?? el.parentElement;
+        if (!productCtx) return;
+
+        const ctxText = productCtx.textContent ?? '';
+        const altTerm = BAIT_SWITCH_ALT_TERMS.find((t) => ctxText.includes(t));
+        if (!altTerm) return;
+
+        seen.add(el);
+        logger.log('DOM:유인판매',
+          `selector="${selector}" alt="${altTerm}" text="${ctxText.slice(0, 60)}"`);
+
+        detections.push({
+          id: generateId(),
+          guideline: 6,
+          guidelineName: '유인판매',
+          severity: 'high',
+          confidence: 'suspicious',
+          module: 'dom',
+          description: `품절·판매중지 상품 페이지에서 다른 상품으로 유도("${altTerm}")하는 패턴이 감지되었습니다.`,
+          evidence: {
+            type: 'dom_element',
+            raw: el.outerHTML.slice(0, 300),
+            detail: { selector, altTerm, contextText: ctxText.slice(0, 100) },
+          },
+          element: getElementInfo(el),
+        });
+      });
+    }
+
+    // 2) 텍스트 노드 기반 보완 탐지
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    let count = 0;
+
+    while ((node = walker.nextNode()) && count < MAX_TEXT_DETECTIONS) {
+      const text = node.textContent ?? '';
+      const soldoutTerm = SOLDOUT_TERMS.find((t) => text.includes(t));
+      if (!soldoutTerm) continue;
+
+      const parent = node.parentElement;
+      if (!parent || seen.has(parent)) continue;
+
+      const productCtx = parent.closest(PRODUCT_CTX_SELECTOR);
+      if (!productCtx) continue;
+
+      const ctxText = productCtx.textContent ?? '';
+      const altTerm = BAIT_SWITCH_ALT_TERMS.find((t) => ctxText.includes(t));
+      if (!altTerm) continue;
+
+      seen.add(parent);
+      count++;
+
+      logger.log('DOM:유인판매',
+        `soldout="${soldoutTerm}" alt="${altTerm}" text="${text.trim().slice(0, 60)}"`);
+
+      detections.push({
+        id: generateId(),
+        guideline: 6,
+        guidelineName: '유인판매',
+        severity: 'high',
+        confidence: 'suspicious',
+        module: 'dom',
+        description: `"${soldoutTerm}"으로 표시된 상품 페이지에서 다른 상품으로 유도("${altTerm}")하는 패턴이 감지되었습니다.`,
+        evidence: {
+          type: 'dom_element',
+          raw: parent.outerHTML.slice(0, 300),
+          detail: { soldoutTerm, altTerm, text: text.trim().slice(0, 100) },
+        },
+        element: getElementInfo(parent),
+      });
+    }
+
+    return detections;
+  }
+
+  // ─── 공정위 기준 14번: 클릭 피로감 유발 (Click Fatigue) ──────────────────────
+  // 과도한 진행 단계 또는 동의 팝업 내 과다한 체크박스로 불필요한 클릭을 유발하는 패턴 탐지
+  private detectClickFatigue(): DarkPatternDetection[] {
+    const detections: DarkPatternDetection[] = [];
+    const seen = new Set<Element>();
+
+    // 신호 1: 과도한 단계 수 (체크아웃/회원가입 플로우)
+    for (const selector of (domSelectors.selectors as Record<string, string[]>)['click_fatigue_steps'] ?? []) {
+      document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        if (seen.has(el)) return;
+
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return;
+
+        // 직계 자식 li 또는 step 클래스 요소를 단계로 카운트
+        const stepChildren = el.querySelectorAll(':scope > li, :scope > [class*="step"]');
+        const stepCount = stepChildren.length;
+        if (stepCount < CLICK_FATIGUE_STEP_THRESHOLD) return;
+
+        seen.add(el);
+        logger.log('DOM:클릭피로감',
+          `단계 초과 — selector="${selector}" count=${stepCount}`);
+
+        detections.push({
+          id: generateId(),
+          guideline: 14,
+          guidelineName: '클릭 피로감 유발',
+          severity: stepCount >= 7 ? 'high' : 'medium',
+          confidence: 'suspicious',
+          module: 'dom',
+          description: `${stepCount}단계의 과도한 진행 단계가 감지되었습니다. 불필요한 클릭을 유발할 수 있습니다.`,
+          evidence: {
+            type: 'dom_element',
+            raw: el.outerHTML.slice(0, 300),
+            detail: { selector, stepCount },
+          },
+          element: getElementInfo(el),
+        });
+      });
+    }
+
+    // 신호 2: 동의 팝업 내 과다한 체크박스
+    const visibleDialogs = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'dialog[open], [role="dialog"], [class*="modal"], [class*="popup"], [class*="layer-pop"]',
+      ),
+    ).filter((el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+
+    for (const dialog of visibleDialogs) {
+      if (seen.has(dialog)) continue;
+
+      const checkboxes = dialog.querySelectorAll('input[type="checkbox"]');
+      if (checkboxes.length < CLICK_FATIGUE_CHECKBOX_THRESHOLD) continue;
+
+      const dialogText = dialog.textContent ?? '';
+      const isConsentContext = CONSENT_KEYWORDS.some((kw) => dialogText.includes(kw));
+      if (!isConsentContext) continue;
+
+      seen.add(dialog);
+      logger.log('DOM:클릭피로감',
+        `동의 체크박스 과다 — count=${checkboxes.length}`);
+
+      detections.push({
+        id: generateId(),
+        guideline: 14,
+        guidelineName: '클릭 피로감 유발',
+        severity: 'medium',
+        confidence: 'suspicious',
+        module: 'dom',
+        description: `동의·약관 팝업에 ${checkboxes.length}개의 체크박스가 있어 과도한 클릭을 유발합니다.`,
+        evidence: {
+          type: 'dom_element',
+          raw: dialog.outerHTML.slice(0, 300),
+          detail: { checkboxCount: checkboxes.length },
+        },
+        element: getElementInfo(dialog),
       });
     }
 

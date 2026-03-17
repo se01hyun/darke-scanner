@@ -43,6 +43,25 @@
       "[class*='layer-wrap']",
       "[class*='bottom-sheet']"
     ],
+    "bait_and_switch": [
+      "[class*='soldout']",
+      "[class*='sold-out']",
+      "[class*='out-of-stock']",
+      "[class*='outofstock']",
+      "[class*='nostock']",
+      "[class*='no-stock']",
+      "[class*='unavailable']"
+    ],
+    "click_fatigue_steps": [
+      "ol[class*='step']",
+      "ul[class*='step']",
+      "[class*='step-indicator']",
+      "[class*='step-bar']",
+      "[class*='stepbar']",
+      "[class*='wizard-step']",
+      "[class*='checkout-step']",
+      "[class*='progress-step']"
+    ],
     "disguised_ads": [
       "[data-ad]",
       "[data-adunit]",
