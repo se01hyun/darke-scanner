@@ -3,6 +3,7 @@
 > 대한민국 공정거래위원회 온라인 다크 패턴 가이드라인 기반의 실시간 탐지 브라우저 확장 프로그램
 
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome)](https://developer.chrome.com/docs/extensions/mv3/)
+[![CI](https://github.com/se01hyun/darke-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/se01hyun/darke-scanner/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/공정위%20기준-19%2F19%20(100%25)-success)]()
 [![Privacy](https://img.shields.io/badge/데이터%20외부전송-없음-brightgreen)]()
 
@@ -157,10 +158,24 @@ Vitest + jsdom 기반 단위 테스트 스위트가 포함되어 있습니다.
 | `tests/unit/dom-scanner.test.ts` | 108건 | DOM 탐지 메서드 15종 |
 | `tests/unit/rule-engine.test.ts` | 10건 | 위험 점수 계산 |
 | `tests/unit/network-sniffer.test.ts` | 22건 | 네트워크 분석 |
+| `tests/unit/popup.test.ts` | 38건 | 팝업 렌더러·점수 판정 |
+| `tests/unit/overlay.test.ts` | 11건 | XPath 탐색·오버레이 초기화 |
+| **합계** | **157건** | |
 
-- **환경:** jsdom (브라우저 DOM API 시뮬레이션), Chrome Extension API 목
+- **환경:** Vitest + jsdom (브라우저 DOM API 시뮬레이션), Chrome Extension API 목
 - **DOM Scanner 커버리지:** 80%+ (Statement 기준)
 - **특이사항:** `getBoundingClientRect()` 가시성 체크, `CSS.escape` 폴리필, `__DS_DEBUG__` 상수 주입 등 브라우저 고유 API 모킹 적용
+
+---
+
+## CI / CD
+
+GitHub Actions를 통해 `main` 브랜치 push 및 PR 시 자동 파이프라인이 실행됩니다.
+
+| Job | 내용 |
+|-----|------|
+| **Typecheck & Test** | `typecheck` → `typecheck:test` → `npm test` 순차 실행 |
+| **Production Build** | test 통과 후 `npm run build:prod` 실행, `dist/` 아티팩트 업로드 (7일 보관) |
 
 ---
 
