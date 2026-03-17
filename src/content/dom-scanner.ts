@@ -524,22 +524,33 @@ export class DOMScanner {
   }
 
   /**
-   * 광고 요소 주변(인접 형제 + 부모의 다른 자식)의 텍스트를 수집한다.
-   * 광고 고지 텍스트는 광고 컨테이너 바깥(라벨·캡션)에 위치해야 유효하다.
-   * 요소 자신의 텍스트는 제외한다 — "광고 표시 생략" 같은 내부 문구를
-   * 정상 고지로 오판하는 것을 방지하기 위함이다.
+   * 광고 요소 직근 주변(인접 형제 + 부모의 다른 직계 자식)의 얕은 텍스트를 수집한다.
+   *
+   * "얕은 텍스트"란 해당 요소의 직계 텍스트 노드만 읽고 자식 요소 안쪽으로는
+   * 내려가지 않는 것을 의미한다. 이렇게 해야 페이지 다른 곳에 있는 "광고" 레이블이
+   * 큰 컨테이너(예: 메인 콘텐츠 div)의 textContent 에 포함되어 엉뚱한 요소를
+   * "정상 고지됨"으로 오판하는 문제를 방지할 수 있다.
+   *
+   * 요소 자신의 텍스트는 제외한다 — 내부 극소 "광고" 레이블을 정상 고지로 오판 방지.
    */
   private getAdDisclosureArea(el: HTMLElement): string {
+    /** 요소의 직계 텍스트 노드만 반환 (자식 요소 미포함) */
+    const shallowText = (node: Element): string => {
+      let t = '';
+      for (const child of node.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) t += child.textContent ?? '';
+      }
+      return t;
+    };
+
     const parts: string[] = [];
-    // 이전·다음 형제 요소
     const prev = el.previousElementSibling;
     const next = el.nextElementSibling;
-    if (prev) parts.push(prev.textContent ?? '');
-    if (next) parts.push(next.textContent ?? '');
-    // 부모의 다른 자식들 (el 자신 제외)
+    if (prev) parts.push(shallowText(prev));
+    if (next) parts.push(shallowText(next));
     if (el.parentElement) {
       Array.from(el.parentElement.children).forEach((child) => {
-        if (child !== el) parts.push(child.textContent ?? '');
+        if (child !== el) parts.push(shallowText(child));
       });
     }
     return parts.join(' ');
@@ -1005,8 +1016,10 @@ export class DOMScanner {
    * 같은 가이드라인 번호로 탐지된 요소들 중 DOM 중첩 관계에 있는 경우
    * 가장 바깥쪽 조상 요소 하나만 남기고 자손 요소의 탐지 결과를 제거한다.
    *
-   * 예) G17: .countdown div 안에 있는 .countdown-unit span 3개가 함께 탐지된 경우
-   *    → 바깥쪽 .countdown div 하나만 유지하고 span 3개 제거
+   * 추가로 같은 가이드라인의 두 요소가 동일 UI 컴포넌트 안의 형제 수준(LCA가
+   * 양쪽으로부터 maxDepth=3 이내)이면 렌더 면적이 큰 쪽 하나만 유지한다.
+   * 예) G17: .countdown-wrap 과 .flash-timer 가 같은 .urgency-banner 내 형제인 경우
+   *    → 더 큰 .countdown-wrap 하나만 유지
    */
   private deduplicateOverlapping(detections: DarkPatternDetection[]): DarkPatternDetection[] {
     // element 정보가 없는 탐지(NLP·네트워크 전용)는 필터링 대상에서 제외
@@ -1032,13 +1045,26 @@ export class DOMScanner {
       const { d: di, node: ni } = resolved[i];
       let isInner = false;
 
+      const ri = ni.getBoundingClientRect();
+      const areaI = ri.width * ri.height;
+
       for (let j = 0; j < resolved.length; j++) {
         if (i === j) continue;
         const { d: dj, node: nj } = resolved[j];
-        // 같은 가이드라인 번호이고, ni가 nj의 자손이면 ni는 제거 대상
-        if (di.guideline === dj.guideline && nj !== ni && nj.contains(ni)) {
-          isInner = true;
-          break;
+        if (di.guideline !== dj.guideline || nj === ni) continue;
+
+        // Case 1: ni가 nj의 자손이면 제거
+        if (nj.contains(ni)) { isInner = true; break; }
+
+        // Case 2: 같은 UI 컴포넌트 안의 형제 수준 — 면적이 작은 쪽 제거
+        if (this.isCloseRelative(ni, nj, 3)) {
+          const rj = nj.getBoundingClientRect();
+          const areaJ = rj.width * rj.height;
+          // nj가 더 크거나, 면적이 같을 때 문서 순서가 앞이면 ni 제거
+          if (areaJ > areaI || (areaJ === areaI && j < i)) {
+            isInner = true;
+            break;
+          }
         }
       }
 
@@ -1052,6 +1078,23 @@ export class DOMScanner {
     }
 
     return result;
+  }
+
+  /**
+   * a와 b의 최근 공통 조상(LCA)이 양쪽 모두로부터 maxDepth 단계 이내인지 확인.
+   * true면 같은 UI 컴포넌트 안의 형제 수준 요소로 판단한다.
+   */
+  private isCloseRelative(a: HTMLElement, b: HTMLElement, maxDepth: number): boolean {
+    let ancestor: HTMLElement | null = a.parentElement;
+    for (let depthA = 0; depthA < maxDepth && ancestor; depthA++, ancestor = ancestor.parentElement) {
+      if (!ancestor.contains(b)) continue;
+      // ancestor가 b를 포함함 — b에서 ancestor까지의 깊이 계산
+      let depthB = 0;
+      let cur: HTMLElement | null = b.parentElement;
+      while (cur && cur !== ancestor) { depthB++; cur = cur.parentElement; }
+      if (depthB <= maxDepth) return true;
+    }
+    return false;
   }
 
   /** XPath 문자열로 DOM 요소를 조회한다. */
