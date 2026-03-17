@@ -429,6 +429,9 @@ export class DOMScanner {
     for (const selector of domSelectors.selectors.preselected_options) {
       document.querySelectorAll<HTMLInputElement>(selector).forEach((el) => {
         if (el.required || seen.has(el)) return;
+        // 화면에 렌더링되지 않은 요소(숨겨진 복사본, 템플릿 등)는 제외
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return;
         seen.add(el);
         detections.push(makeDetection(el, false));
       });
@@ -440,6 +443,9 @@ export class DOMScanner {
       'input[type="checkbox"], input[type="radio"]',
     ).forEach((el) => {
       if (el.required || seen.has(el) || !el.checked || el.defaultChecked) return;
+      // 화면에 렌더링되지 않은 요소는 제외
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
       seen.add(el);
       detections.push(makeDetection(el, true));
     });
