@@ -14,7 +14,8 @@
       "Bash(cd:*)",
       "Bash(npm run:*)",
       "Skill(update-config)",
-      "Bash(grep -v '^$')"
+      "Bash(grep -v '^$')",
+      "Bash(npx tsc:*)"
     ]
   }
 }

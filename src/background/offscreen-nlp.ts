@@ -11,7 +11,7 @@
 //   ← { score: number }
 
 import * as ort from 'onnxruntime-web';
-import { tokenize, cosineSim, MAX_SEQ_LEN } from '../nlp/tokenizer';
+import { tokenize, MAX_SEQ_LEN } from '../nlp/tokenizer';
 
 const MODEL_FILENAME = 'models/koelectra-fomo.onnx';
 const HIDDEN_SIZE    = 256;
@@ -110,5 +110,3 @@ function meanPool(hidden: Float32Array, seqLen: number, hiddenSize: number): Flo
   return pooled;
 }
 
-// cosineSim re-export (tokenizer.ts에서 가져오지만 offscreen은 독립 번들이므로 직접 사용)
-export { cosineSim };

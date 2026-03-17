@@ -3,6 +3,7 @@
 
 import type { DarkPatternDetection, MessageType } from '../types';
 import { escHtml } from '../utils/html';
+import { SEVERITY_KO, MODULE_KO } from '../utils/display';
 
 // ── 스타일 (Shadow DOM 내부 전용) ─────────────────────────────────────────────
 
@@ -117,8 +118,6 @@ const STYLES = `
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
-const SEVERITY_KO: Record<string, string> = { high: '높음', medium: '보통', low: '낮음' };
-const MODULE_KO:   Record<string, string> = { dom: 'DOM', nlp: 'NLP', network: '네트워크' };
 
 function resolveXPath(xpath: string): HTMLElement | null {
   try {

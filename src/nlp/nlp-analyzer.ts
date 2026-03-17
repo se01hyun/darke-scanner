@@ -10,7 +10,6 @@ import { KeywordMatcher } from './keyword-matcher';
 import { calcPressureScore } from './pressure-scorer';
 import { analyzeReviews } from './review-analyzer';
 import { OnnxSession } from './onnx-session';
-import { cosineSim } from './tokenizer';
 import type { DarkPatternDetection, NLPTextsPayload, ReviewCluster, NLPAnalysisResult } from '../types';
 import { generateId } from '../utils/id';
 import { logger } from '../utils/debug-logger';

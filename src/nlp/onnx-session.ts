@@ -7,9 +7,8 @@
 import * as ort from 'onnxruntime-web';
 import { tokenize, cosineSim, MAX_SEQ_LEN } from './tokenizer';
 
-const MODEL_FILENAME    = 'models/koelectra-fomo.onnx';
 // KoELECTRA-small hidden size (256). base 모델이면 768 으로 변경.
-const HIDDEN_SIZE       = 256;
+const HIDDEN_SIZE = 256;
 
 export class OnnxSession {
   private session: ort.InferenceSession | null = null;

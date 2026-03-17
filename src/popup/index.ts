@@ -1,22 +1,6 @@
-import type { DetectionResult, DarkPatternDetection, Severity, Confidence, ReviewCluster } from '../types';
+import type { DetectionResult, DarkPatternDetection, ReviewCluster } from '../types';
 import { escHtml } from '../utils/html';
-
-// ── 상수 ──────────────────────────────────────────────────────────────────────
-
-const SEVERITY_KO: Record<Severity, string> = {
-  high:   '높음',
-  medium: '보통',
-  low:    '낮음',
-};
-const CONFIDENCE_KO: Record<Confidence, string> = {
-  confirmed:  '확정',
-  suspicious: '의심',
-};
-const MODULE_KO: Record<string, string> = {
-  dom:     'DOM',
-  nlp:     'NLP',
-  network: '네트워크',
-};
+import { SEVERITY_KO, CONFIDENCE_KO, MODULE_KO } from '../utils/display';
 
 // ── 유틸 ──────────────────────────────────────────────────────────────────────
 
