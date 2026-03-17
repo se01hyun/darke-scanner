@@ -66,6 +66,7 @@ dark-scanner/
 - 오버레이는 기존 페이지 레이아웃을 절대 깨지 않아야 한다. Shadow DOM을 사용한다.
 - 탐지 항목 표시 시 `severity`(심각도)와 `confidence`(확신도)를 반드시 함께 표시한다.
 - `confidence: 'suspicious'`인 항목은 "의심" 배지로, `'confirmed'`는 "확정" 배지로 구분한다.
+- 가짜 리뷰 클러스터(`DetectionResult.reviewClusters`)가 존재하면 팝업 탐지 목록 아래에 클러스터별 유사도 바·샘플 리뷰 목록을 렌더링한다 (UI-06).
 
 ---
 
@@ -84,6 +85,20 @@ interface DarkPatternDetection {
   description: string;
   evidence: Evidence;
   element?: ElementInfo;
+}
+
+interface DetectionResult {
+  pageUrl: string;
+  scanTimestamp: number;
+  overallRiskScore: number;                 // 0~100
+  detections: DarkPatternDetection[];
+  reviewClusters?: ReviewCluster[];         // 가짜 리뷰 의심 클러스터 (NLP 분석 시 채워짐)
+}
+
+// NLPAnalyzer.analyze() 반환 타입
+interface NLPAnalysisResult {
+  detections: DarkPatternDetection[];
+  reviewClusters: ReviewCluster[];
 }
 ```
 
