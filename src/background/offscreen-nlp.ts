@@ -12,7 +12,8 @@
 
 import * as ort from 'onnxruntime-web';
 import { initTokenizer, tokenize, MAX_SEQ_LEN } from '../nlp/tokenizer';
-import { HIDDEN_SIZE, meanPool, softmaxHighClass } from '../nlp/onnx-utils';
+import { HIDDEN_SIZE, meanPool, softmaxHighClass, buildFeeds } from '../nlp/onnx-utils';
+import type { OffscreenMessage } from '../types';
 
 const MODEL_FILENAME = 'models/koelectra-fomo.onnx';
 
@@ -38,12 +39,7 @@ async function getSession(): Promise<ort.InferenceSession> {
 async function runEmbedding(text: string): Promise<Float32Array> {
   const sess = await getSession();
   const { inputIds, attentionMask, tokenTypeIds } = tokenize(text);
-
-  const results = await sess.run({
-    input_ids:      new ort.Tensor('int64', inputIds,      [1, MAX_SEQ_LEN]),
-    attention_mask: new ort.Tensor('int64', attentionMask, [1, MAX_SEQ_LEN]),
-    token_type_ids: new ort.Tensor('int64', tokenTypeIds,  [1, MAX_SEQ_LEN]),
-  });
+  const results = await sess.run(buildFeeds(inputIds, attentionMask, tokenTypeIds));
 
   const hidden = results['last_hidden_state']?.data as Float32Array | undefined;
   if (!hidden) throw new Error('last_hidden_state 출력 없음');
@@ -54,12 +50,7 @@ async function runEmbedding(text: string): Promise<Float32Array> {
 async function runPressure(text: string): Promise<number> {
   const sess = await getSession();
   const { inputIds, attentionMask, tokenTypeIds } = tokenize(text);
-
-  const results = await sess.run({
-    input_ids:      new ort.Tensor('int64', inputIds,      [1, MAX_SEQ_LEN]),
-    attention_mask: new ort.Tensor('int64', attentionMask, [1, MAX_SEQ_LEN]),
-    token_type_ids: new ort.Tensor('int64', tokenTypeIds,  [1, MAX_SEQ_LEN]),
-  });
+  const results = await sess.run(buildFeeds(inputIds, attentionMask, tokenTypeIds));
 
   const logits = results['logits']?.data as Float32Array | undefined;
   if (!logits) throw new Error('logits 출력 없음');
@@ -68,12 +59,6 @@ async function runPressure(text: string): Promise<number> {
 }
 
 // ── 메시지 리스너 ──────────────────────────────────────────────────────────
-
-type OffscreenMessage = {
-  type: 'OFFSCREEN_EMBED' | 'OFFSCREEN_PRESSURE';
-  target: string;
-  payload: { text: string };
-};
 
 chrome.runtime.onMessage.addListener(
   (msg: OffscreenMessage, _sender, sendResponse) => {

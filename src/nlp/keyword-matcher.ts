@@ -1,15 +1,12 @@
 // FOMO 키워드 사전 매칭 — 1단계 fast path
 // 원격 JSON 갱신 지원 (HTTPS 고정 도메인, 스키마 검증, 버전 비교, 실패 시 캐시 유지)
 
+import type { KeywordDict } from '../types';
+
 const CACHE_KEY = 'nlp:keyword_dict';
 
 // 원격 갱신을 허용하는 호스트 (빈 문자열이면 원격 갱신 비활성화)
 const ALLOWED_REMOTE_HOST = '';
-
-interface KeywordDict {
-  version: string;
-  keywords: string[];
-}
 
 function isValidDict(obj: unknown): obj is KeywordDict {
   return (

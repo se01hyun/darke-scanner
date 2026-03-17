@@ -50,9 +50,9 @@ function renderScoreSection(result: DetectionResult): HTMLElement {
     hour: '2-digit', minute: '2-digit',
   });
 
-  const highCount   = detections.filter(d => d.severity === 'high').length;
-  const medCount    = detections.filter(d => d.severity === 'medium').length;
-  const confirmedCt = detections.filter(d => d.confidence === 'confirmed').length;
+  const highCount      = detections.filter(d => d.severity === 'high').length;
+  const medCount       = detections.filter(d => d.severity === 'medium').length;
+  const confirmedCount = detections.filter(d => d.confidence === 'confirmed').length;
 
   const summaryParts: string[] = [];
   if (highCount)  summaryParts.push(`높음 ${highCount}건`);
@@ -60,7 +60,7 @@ function renderScoreSection(result: DetectionResult): HTMLElement {
   const lowCount = detections.length - highCount - medCount;
   if (lowCount > 0) summaryParts.push(`낮음 ${lowCount}건`);
   const summaryText = summaryParts.length
-    ? summaryParts.join(' · ') + ` (확정 ${confirmedCt}건)`
+    ? summaryParts.join(' · ') + ` (확정 ${confirmedCount}건)`
     : '';
 
   const section = document.createElement('div');

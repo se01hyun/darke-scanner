@@ -2,7 +2,7 @@
 // 공정위 기준 17(시간제한 알림), 18(낮은 재고 알림), 3·10(몰래 장바구니 추가 / 특정옵션의 사전선택) 구현
 // Phase 5 — 기준 9(잘못된 계층구조 / 취소 버튼 시각적 약화) 추가, QA 로깅 추가
 
-import type { DarkPatternDetection } from '../types';
+import type { DarkPatternDetection, TimerSource } from '../types';
 import { generateId } from '../utils/id';
 import { getElementInfo, getContrastRatio } from '../utils/element';
 import { logger } from '../utils/debug-logger';
@@ -38,8 +38,6 @@ const OPACITY_THRESHOLD = 0.70;
 const COUNTDOWN_TEXT_RE = /\d{1,2}:\d{2}(:\d{2})?/;
 
 // ─── 가이드라인 17: 카운트다운 소스 분석 ──────────────────────────────────────
-type TimerSource = 'server_driven' | 'client_reset' | 'client_only' | 'external_script' | 'unknown';
-
 /**
  * 카운트다운 요소가 서버 데이터 기반인지 순수 클라이언트 로직인지 판별한다.
  *

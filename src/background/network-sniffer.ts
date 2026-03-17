@@ -10,6 +10,7 @@ import type {
   DarkPatternDetection,
   NetworkResponsePayload,
   ScriptPatternPayload,
+  TabPriceRecord,
 } from '../types';
 import { generateId } from '../utils/id';
 
@@ -29,12 +30,6 @@ const CHECKOUT_URL_PATTERNS = [
 ];
 // 가격 변동 탐지 임계값: 5% 이상 인상이면 의심
 const DRIP_PRICE_THRESHOLD = 0.05;
-
-interface TabPriceRecord {
-  firstPrice: number;
-  firstUrl: string;
-  timestamp: number;
-}
 
 function matchesAny(key: string, patterns: string[]): boolean {
   return patterns.some((p) => key.toLowerCase().includes(p));

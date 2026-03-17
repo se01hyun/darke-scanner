@@ -6,7 +6,7 @@
 
 import * as ort from 'onnxruntime-web';
 import { initTokenizer, tokenize, cosineSim, MAX_SEQ_LEN } from './tokenizer';
-import { HIDDEN_SIZE, meanPool, softmaxHighClass } from './onnx-utils';
+import { HIDDEN_SIZE, meanPool, softmaxHighClass, buildFeeds } from './onnx-utils';
 
 export class OnnxSession {
   private session: ort.InferenceSession | null = null;
@@ -87,7 +87,7 @@ export class OnnxSession {
 
   private async runEmbedding(text: string): Promise<Float32Array> {
     const { inputIds, attentionMask, tokenTypeIds } = tokenize(text);
-    const feeds = this.buildFeeds(inputIds, attentionMask, tokenTypeIds);
+    const feeds = buildFeeds(inputIds, attentionMask, tokenTypeIds);
     const results = await this.session!.run(feeds);
 
     const hiddenState = results['last_hidden_state']?.data as Float32Array | undefined;
@@ -98,25 +98,13 @@ export class OnnxSession {
 
   private async runPressureClassification(text: string): Promise<number> {
     const { inputIds, attentionMask, tokenTypeIds } = tokenize(text);
-    const feeds = this.buildFeeds(inputIds, attentionMask, tokenTypeIds);
+    const feeds = buildFeeds(inputIds, attentionMask, tokenTypeIds);
     const results = await this.session!.run(feeds);
 
     const logits = results['logits']?.data as Float32Array | undefined;
     if (!logits) throw new Error('logits 출력 없음');
 
     return softmaxHighClass(logits);
-  }
-
-  private buildFeeds(
-    inputIds: BigInt64Array,
-    attentionMask: BigInt64Array,
-    tokenTypeIds: BigInt64Array,
-  ): Record<string, ort.Tensor> {
-    return {
-      input_ids:      new ort.Tensor('int64', inputIds,      [1, MAX_SEQ_LEN]),
-      attention_mask: new ort.Tensor('int64', attentionMask, [1, MAX_SEQ_LEN]),
-      token_type_ids: new ort.Tensor('int64', tokenTypeIds,  [1, MAX_SEQ_LEN]),
-    };
   }
 
   // ── Offscreen Document 폴백 ────────────────────────────────────────────────

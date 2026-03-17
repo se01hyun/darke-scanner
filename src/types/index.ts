@@ -82,6 +82,40 @@ export interface NLPTextsPayload {
   ctaTexts: NLPTextItem[];    // CTA 버튼·링크 텍스트
 }
 
+// ─── 모듈 내부 타입 (중앙 관리) ───────────────────────────────────────────────
+
+// DOM Scanner — 카운트다운 타이머 소스 분류
+export type TimerSource = 'server_driven' | 'client_reset' | 'client_only' | 'external_script' | 'unknown';
+
+// Network Sniffer — 탭별 가격 추적 레코드
+export interface TabPriceRecord {
+  firstPrice: number;
+  firstUrl:   string;
+  timestamp:  number;
+}
+
+// Keyword Matcher — FOMO 키워드 사전 구조
+export interface KeywordDict {
+  version:  string;
+  keywords: string[];
+}
+
+// Overlay — Shadow DOM 하이라이트 엔트리
+export interface BoundingRect { top: number; left: number; width: number; height: number; }
+
+export interface HighlightEntry {
+  xpath:        string;
+  el:           HTMLElement;    // .highlight div (Shadow DOM 내부)
+  boundingRect: BoundingRect;   // 스캔 시점 절대 좌표 (XPath 실패 시 fallback)
+}
+
+// Offscreen NLP — Service Worker ↔ Offscreen Document 메시지
+export type OffscreenMessage = {
+  type:    'OFFSCREEN_EMBED' | 'OFFSCREEN_PRESSURE';
+  target:  string;
+  payload: { text: string };
+};
+
 // 모듈 간 메시지 타입
 export type MessageType =
   | { type: 'DOM_DETECTIONS';      payload: DarkPatternDetection[] }
