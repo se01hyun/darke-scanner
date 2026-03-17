@@ -62,6 +62,27 @@
       "[class*='checkout-step']",
       "[class*='progress-step']"
     ],
+    "drip_pricing": [
+      "[class*='hidden-fee']",
+      "[class*='drip-fee']",
+      "[class*='extra-fee']",
+      "[class*='added-fee']",
+      "[class*='surcharge']",
+      "[data-fee]",
+      "[data-extra-cost]"
+    ],
+    "social_proof": [
+      "[class*='social-proof']",
+      "[class*='viewer-count']",
+      "[class*='view-count']",
+      "[class*='now-viewing']",
+      "[class*='recent-purchase']",
+      "[class*='recently-purchased']",
+      "[class*='live-count']",
+      "[class*='realtime-count']",
+      "[data-viewer-count]",
+      "[data-purchase-count]"
+    ],
     "disguised_ads": [
       "[data-ad]",
       "[data-adunit]",
