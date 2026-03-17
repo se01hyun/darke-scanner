@@ -32,27 +32,27 @@
 
 Dark-Scanner의 탐지 엔진은 공정위가 고시한 아래 19가지 유형을 기준으로 설계된다.
 
-| No. | 유형명 | 설명 |
-|-----|--------|------|
-| 1 | 잘못된 긴급성 (False Urgency) | 실제와 다른 마감 시한, 재고 부족 등을 허위로 표시 |
-| 2 | 희소성 과장 (Scarcity) | 재고·수량이 실제보다 적은 것처럼 표시 |
-| 3 | 사회적 증거 조작 (Social Proof) | 허위 조회 수, 구매 수, 동시 접속자 수 표시 |
-| 4 | 숨겨진 비용 (Hidden Costs) | 결제 마지막 단계에서 예상치 못한 추가 비용 표시 |
-| 5 | 바구니 담기 (Basket Sneaking) | 동의 없이 장바구니에 추가 상품·서비스 자동 추가 |
-| 6 | 강제 계정 생성 (Forced Account Creation) | 게스트 구매 불가, 강제 가입 유도 |
-| 7 | 구독 함정 (Subscription Trap) | 무료 체험 후 자동 유료 전환, 해지 어렵게 설계 |
-| 8 | 불명확한 구독 취소 (Hard to Cancel) | 구독 취소 경로를 의도적으로 복잡하게 숨김 |
-| 9 | 오인 유도 광고 (Disguised Ads) | 광고를 콘텐츠·검색 결과처럼 위장 |
-| 10 | 선택 장애 유발 (Trick Questions) | 혼란스러운 문구·이중 부정으로 동의 유도 |
-| 11 | 기본값 조작 (Misdirection / Preselection) | 사용자에게 불리한 옵션을 기본 선택값으로 설정 |
-| 12 | 인터페이스 간섭 (Interface Interference) | 거절 버튼을 찾기 어렵게 배치하거나 시각적으로 약화 |
-| 13 | 주의 분산 (Misdirection) | 불필요한 정보나 디자인으로 사용자 시선을 핵심에서 분산 |
-| 14 | 감정적 조작 (Confirmshaming) | "아니요, 저는 손해를 감수하겠습니다" 식의 죄책감 유발 문구 |
-| 15 | 가짜 리뷰 (Fake Reviews) | 반복되는 패턴의 기계적 생성 리뷰 |
-| 16 | 유인 판매 (Bait and Switch) | 특정 상품으로 유인 후 다른 상품으로 유도 |
-| 17 | 개인정보 과도 수집 유도 (Privacy Zuckering) | 과도한 개인정보 동의를 기본 선택으로 설정 |
-| 18 | 로딩 조작 (Forced Continuity) | 취소 시점을 놓치도록 의도적으로 결제 단계 가속 |
-| 19 | 비교 방해 (Comparison Prevention) | 가격·조건 비교를 어렵게 만드는 정보 구조 설계 |
+| No. | 유형명 | 탐지 모듈 |
+|-----|--------|-----------|
+| 1  | 숨은 갱신 (자동갱신·자동결제 미고지) | NLP |
+| 2  | 순차공개 가격책정 (Drip Pricing) | Network |
+| 3  | 몰래 장바구니 추가 | DOM |
+| 4  | 거짓할인 (원가 없는 할인율 표시) | DOM |
+| 5  | 거짓추천 (가짜 리뷰 클러스터) | NLP |
+| 6  | 유인판매 | DOM |
+| 7  | 위장광고 (광고 고지 누락) | DOM |
+| 8  | 속임수 질문 (이중부정 동의 유도) | NLP |
+| 9  | 잘못된 계층구조 (취소 버튼 시각적 약화) | DOM |
+| 10 | 특정옵션의 사전선택 | DOM |
+| 11 | 취소·탈퇴 등의 방해 | DOM |
+| 12 | 숨겨진 정보 (중요 약관 극소 폰트) | DOM |
+| 13 | 가격비교 방해 | DOM |
+| 14 | 클릭 피로감 유발 | DOM |
+| 15 | 반복간섭 (마케팅 팝업 반복 노출) | DOM |
+| 16 | 감정적 언어사용 (Confirmshaming) | NLP |
+| 17 | 시간제한 알림 (허위 카운트다운) | DOM |
+| 18 | 낮은 재고 알림 (허위 품절 임박) | DOM |
+| 19 | 다른 소비자의 활동 알림 (허위 실시간 수치) | Network |
 
 ---
 
@@ -286,7 +286,7 @@ interface Evidence {
 
 interface ElementInfo {
   xpath: string;
-  boundingRect: DOMRect;
+  boundingRect: { top: number; left: number; width: number; height: number };
   outerHTML: string;
 }
 ```
@@ -294,22 +294,23 @@ interface ElementInfo {
 ### 6.2 NLP 분석 결과
 
 ```typescript
+// 내부 압박 지수 계산 결과
 interface NLPResult {
   pressureScore: number;               // 심리적 압박 지수 (0~100)
-  fomoKeywords: string[];             // 탐지된 FOMO 유발 어휘
-  reviewClusters: ReviewCluster[];    // 가짜 리뷰 의심 클러스터
+  fomoKeywords: string[];              // 탐지된 FOMO 유발 어휘
+  reviewClusters: ReviewCluster[];     // 가짜 리뷰 의심 클러스터
 }
 
 interface ReviewCluster {
   reviews: string[];
-  avgSimilarity: number;              // 평균 코사인 유사도
-  isSuspicious: boolean;              // 임계값(0.85) 초과 여부
+  avgSimilarity: number;               // 평균 코사인 유사도
+  isSuspicious: boolean;               // 임계값(0.85) 초과 여부
 }
 
 // NLPAnalyzer.analyze() 반환 타입 — detections와 reviewClusters를 함께 반환
 interface NLPAnalysisResult {
-  detections: DarkPatternDetection[];
-  reviewClusters: ReviewCluster[];
+  detections: DarkPatternDetection[];  // 탐지된 다크 패턴 목록
+  reviewClusters: ReviewCluster[];     // 가짜 리뷰 의심 클러스터
 }
 ```
 
