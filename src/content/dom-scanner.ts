@@ -1105,6 +1105,8 @@ export class DOMScanner {
 
         // 텍스트 패턴 검증 — 실시간 활동 문구가 없으면 리뷰 카운트 등 오탐으로 스킵
         const fullText = el.textContent ?? '';
+        // 200자 초과 요소는 컨테이너 전체가 선택된 것 — 실제 소셜 프루프 문구는 항상 짧음
+        if (fullText.trim().length > 200) return;
         if (!SOCIAL_PROOF_RE.test(fullText) && !SOCIAL_PROOF_NUMBER_RE.test(fullText)) return;
 
         seen.add(el);
@@ -1139,9 +1141,15 @@ export class DOMScanner {
       const parent = node.parentElement;
       if (!parent || seen.has(parent)) continue;
 
-      const elemText = parent.textContent ?? '';
-      const isMatch = SOCIAL_PROOF_RE.test(elemText) || SOCIAL_PROOF_NUMBER_RE.test(elemText);
-      if (!isMatch) continue;
+      // 텍스트 노드 자체의 내용으로만 매칭 — parent.textContent를 쓰면
+      // 자손 전체 텍스트가 합산되어 페이지 상단 skip-link 등 엉뚱한 부모가 탐지됨
+      const nodeText = node.textContent ?? '';
+      // 200자 초과 텍스트 노드는 여러 섹션이 합쳐진 컨테이너 — 전용 소셜 프루프 요소가 아님
+      if (nodeText.trim().length > 200) continue;
+      const matchSP  = SOCIAL_PROOF_RE.exec(nodeText);
+      const matchSPN = matchSP ? null : SOCIAL_PROOF_NUMBER_RE.exec(nodeText);
+      const matchObj = matchSP ?? matchSPN;
+      if (!matchObj) continue;
 
       const rect = parent.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) continue;
@@ -1159,7 +1167,9 @@ export class DOMScanner {
       seen.add(parent);
       count++;
 
-      const snippet = elemText.trim().slice(0, 60);
+      // snippet은 실제 매칭된 위치 기준으로 추출 (앞 skip-link 등이 잘리지 않도록)
+      const matchStart = Math.max(0, matchObj.index - 10);
+      const snippet = nodeText.slice(matchStart, matchStart + 60).trim();
       logger.log('DOM:소비자활동알림', `텍스트 탐지 — "${snippet}"`);
 
       detections.push({
@@ -1173,7 +1183,7 @@ export class DOMScanner {
         evidence: {
           type: 'dom_element',
           raw: parent.outerHTML.slice(0, 300),
-          detail: { text: elemText.trim().slice(0, 100) },
+          detail: { text: nodeText.trim().slice(0, 100) },
         },
         element: getElementInfo(parent),
       });
