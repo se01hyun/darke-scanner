@@ -320,6 +320,25 @@
             </div>
           </div>
           <p class="sneaked-note">※ 위 항목은 결제 완료 후 별도 주문서로 처리됩니다</p>
+
+          <!-- G3/G10: JS 동적 사전선택 테스트 케이스 —
+               HTML checked 속성 없음, 스크립트에서 .checked = true 로 세팅 -->
+          <div class="sneaked-item" style="border: 2px dashed #e74c3c; margin-top: 8px;">
+            <input type="checkbox" id="js-sneak-upsell" name="js_upsell"><!-- checked 속성 없음 -->
+            <label for="js-sneak-upsell">
+              🧃 건강즙 샘플 세트 (업셀 추가)
+              <span class="item-price">+4,500원</span>
+              <small>스크립트로 동적 체크됨 — G3 JS 동적 사전선택 테스트</small>
+            </label>
+          </div>
+          <div class="sneaked-item" style="border: 2px dashed #e74c3c; margin-top: 4px;">
+            <input type="checkbox" id="js-sneak-membership" name="js_membership"><!-- checked 속성 없음 -->
+            <label for="js-sneak-membership">
+              ⭐ 골드 멤버십 구독 자동가입
+              <span class="item-price">월 9,900원</span>
+              <small>스크립트로 동적 체크됨 — G3 JS 동적 사전선택 테스트</small>
+            </label>
+          </div>
         </div>
 
         <!-- 결제 수단 -->
@@ -533,6 +552,15 @@
     e.preventDefault();
     document.getElementById('exit-popup').style.display = 'flex';
   });
+
+  // G3/G10: JS 동적 사전선택 — HTML checked 속성 없이 스크립트로 체크 세팅
+  // DOMScanner의 watchInputPropertyChanges() 탐지 대상
+  (function() {
+    const jsSneak = document.getElementById('js-sneak-upsell');
+    const jsMembership = document.getElementById('js-sneak-membership');
+    if (jsSneak)      jsSneak.checked      = true;  // input.checked = true (속성 없음)
+    if (jsMembership) jsMembership.checked = true;
+  })();
 
   // G19: 가짜 동시 결제자 수 (난수)
   // NET-05 패턴: Math.random() + setInterval

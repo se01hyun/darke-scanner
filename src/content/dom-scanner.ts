@@ -165,6 +165,7 @@ export class DOMScanner {
     this.scan();
     this.watchDynamicChanges();
     this.watchSPANavigation();
+    this.watchInputPropertyChanges();
   }
 
   private scan(): void {
@@ -370,43 +371,59 @@ export class DOMScanner {
   // ─── 공정위 기준 3·10번: 몰래 장바구니 추가 / 특정옵션의 사전선택 ────────────
   private detectPreselectedOptions(): DarkPatternDetection[] {
     const detections: DarkPatternDetection[] = [];
+    const seen = new Set<HTMLInputElement>();
 
+    // 탐지 객체 생성 헬퍼
+    const makeDetection = (el: HTMLInputElement, isJsDriven: boolean): DarkPatternDetection => {
+      const label = this.findLabel(el)?.trim() ?? null;
+      const labelLower = label?.toLowerCase() ?? '';
+
+      // 레이블에 상업적 추가 항목을 암시하는 단어가 있으면 더 심각한 유형으로 분류
+      // '선택'은 제외 — "배송지 선택", "사이즈 선택" 등 정상 레이블과 혼동되어 오탐 발생
+      const isSneaking =
+        labelLower.includes('추가') ||
+        labelLower.includes('보험') ||
+        labelLower.includes('구독') ||
+        labelLower.includes('동의');
+
+      logger.log('DOM:사전선택',
+        `isSneaking=${isSneaking} jsDriven=${isJsDriven} label="${label ?? '(없음)'}" type=${el.type} id=${el.id}`);
+
+      return {
+        id: generateId(),
+        guideline: isSneaking ? 3 : 10,
+        guidelineName: isSneaking ? '몰래 장바구니 추가' : '특정옵션의 사전선택',
+        severity: isSneaking ? 'high' : 'medium',
+        confidence: isSneaking ? 'confirmed' : 'suspicious',
+        module: 'dom',
+        description: `동의 없이 기본 선택된 옵션이 감지되었습니다${label ? `: "${label}"` : ''}.${isJsDriven ? ' (스크립트로 동적 선택됨)' : ''}`,
+        evidence: {
+          type: 'dom_element',
+          raw: el.outerHTML.slice(0, 300),
+          detail: { label, inputType: el.type, isJsDriven },
+        },
+        element: getElementInfo(el),
+      };
+    };
+
+    // 1) HTML checked 속성 기반 탐지 (기존)
     for (const selector of domSelectors.selectors.preselected_options) {
       document.querySelectorAll<HTMLInputElement>(selector).forEach((el) => {
-        // required 필드는 정상 동작이므로 제외
-        if (el.required) return;
-
-        const label = this.findLabel(el)?.trim() ?? null;
-        const labelLower = label?.toLowerCase() ?? '';
-
-        // 레이블에 상업적 추가 항목을 암시하는 단어가 있으면 더 심각한 유형으로 분류
-        // '선택'은 제외 — "배송지 선택", "사이즈 선택" 등 정상 레이블과 혼동되어 오탐 발생
-        const isSneaking =
-          labelLower.includes('추가') ||
-          labelLower.includes('보험') ||
-          labelLower.includes('구독') ||
-          labelLower.includes('동의');
-
-        logger.log('DOM:사전선택',
-          `isSneaking=${isSneaking} label="${label ?? '(없음)'}" type=${el.type} id=${el.id}`);
-
-        detections.push({
-          id: generateId(),
-          guideline: isSneaking ? 3 : 10,
-          guidelineName: isSneaking ? '몰래 장바구니 추가' : '특정옵션의 사전선택',
-          severity: isSneaking ? 'high' : 'medium',
-          confidence: isSneaking ? 'confirmed' : 'suspicious',
-          module: 'dom',
-          description: `동의 없이 기본 선택된 옵션이 감지되었습니다${label ? `: "${label}"` : ''}.`,
-          evidence: {
-            type: 'dom_element',
-            raw: el.outerHTML.slice(0, 300),
-            detail: { label, inputType: el.type },
-          },
-          element: getElementInfo(el),
-        });
+        if (el.required || seen.has(el)) return;
+        seen.add(el);
+        detections.push(makeDetection(el, false));
       });
     }
+
+    // 2) .checked 프로퍼티 기반 탐지 — HTML attribute 없이 JS로 동적 세팅된 경우
+    // el.checked === true && el.defaultChecked === false → 스크립트가 페이지 로드 후 선택
+    document.querySelectorAll<HTMLInputElement>(
+      'input[type="checkbox"], input[type="radio"]',
+    ).forEach((el) => {
+      if (el.required || seen.has(el) || !el.checked || el.defaultChecked) return;
+      seen.add(el);
+      detections.push(makeDetection(el, true));
+    });
 
     return detections;
   }
@@ -1352,6 +1369,40 @@ export class DOMScanner {
   }
 
   // ─── 인프라 ──────────────────────────────────────────────────────────────────
+
+  /**
+   * HTMLInputElement.prototype.checked setter를 프록시하여
+   * JS 코드가 input.checked = true 로 동적 선택하는 순간을 탐지한다.
+   *
+   * 조건: value=true && 이전값=false && defaultChecked=false
+   *   → HTML attribute 없이 스크립트가 처음 선택 → 재스캔 트리거
+   *
+   * 주의: 사용자 클릭도 이 setter를 거치므로 debounce(300ms)로 flood 방지.
+   */
+  private watchInputPropertyChanges(): void {
+    const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+    if (!desc?.set || !desc.get) return;
+
+    const originalSet = desc.set;
+    const originalGet = desc.get;
+    const triggerRescan = () => {
+      if (this.debounceTimer) clearTimeout(this.debounceTimer);
+      this.debounceTimer = setTimeout(() => this.scan(), 300);
+    };
+
+    Object.defineProperty(HTMLInputElement.prototype, 'checked', {
+      set(this: HTMLInputElement, value: boolean) {
+        const was = (originalGet as () => boolean).call(this);
+        originalSet.call(this, value);
+        // HTML attribute 없이 JS가 처음으로 checked=true 를 세팅하는 경우만 재스캔
+        if (value && !was && !this.defaultChecked) {
+          triggerRescan();
+        }
+      },
+      get: desc.get,
+      configurable: true,
+    });
+  }
 
   private watchDynamicChanges(): void {
     this.observer = new MutationObserver((mutations) => {
